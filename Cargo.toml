@@ -36,4 +36,6 @@ simple_logger = "1.0.1"
 matches = "0.1"
 
 [package.metadata.release]
+# This is a fallback in case we forget to use the CLI flag; i.e. do not
+# publish the crate since GH Actions will do this for us.
 disable-publish = true
