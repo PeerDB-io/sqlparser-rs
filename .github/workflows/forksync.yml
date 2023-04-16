@@ -14,3 +14,4 @@ jobs:
           owner: sqlparser-rs
           base: main
           head: main
+          auto_merge: false
