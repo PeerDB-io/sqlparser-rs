@@ -2874,7 +2874,6 @@ fn parse_create_mirror() {
                 assert_eq!(with_options[0].value, Value::SingleQuotedString("value1".into()));
                 assert_eq!(with_options[1].name, Ident::new("key2"));
                 assert_eq!(with_options[1].value, Value::SingleQuotedString("value2".into()));
-                ()
          },
         _ => unreachable!(),
     }
