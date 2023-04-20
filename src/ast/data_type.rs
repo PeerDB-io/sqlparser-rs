@@ -146,6 +146,8 @@ pub enum DataType {
     ///
     /// [1]: https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#datetime-type
     Timestamp(Option<u64>, TimezoneInfo),
+    /// Since Snowflake can alias "TIMESTAMP" to any of the three Timestamp_* types, creating Snowflake specific types for safety.
+    SnowflakeTimestamp,
     /// Interval
     Interval,
     /// JSON type used in BigQuery
@@ -295,6 +297,7 @@ impl fmt::Display for DataType {
                 }
                 write!(f, ")")
             }
+            DataType::SnowflakeTimestamp => write!(f, "TIMESTAMP_NTZ"),
         }
     }
 }
