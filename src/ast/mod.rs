@@ -1658,6 +1658,53 @@ pub enum Statement {
         sequence_options: Vec<SequenceOptions>,
         owned_by: Option<ObjectName>,
     },
+
+    //////////////////////////////////
+    /// PeerDB Specific Statements ///
+    //////////////////////////////////
+    // CREATE PEER statement, for PeerDB.
+    CreatePeer {
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        if_not_exists: bool,
+        peer_name: ObjectName,
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        peer_type: PeerType,
+        with_options: Vec<SqlOption>,
+    },
+    /// CREATE MIRROR mirror_name FROM\
+    ///  peer_1.schema_1.tbl_1 TO peer_2.schema_2.tbl_2
+    /// WITH (option1 = value1, option2 = value2, ...)
+    CreateMirror {
+        // Name of the mirror job.
+        mirror_name: ObjectName,
+        // Name of the source table.
+        source_table: ObjectName,
+        // Name of the target table.
+        target_table: ObjectName,
+        // Options for the mirror job.
+        with_options: Vec<SqlOption>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum PeerType {
+    Bigquery,
+    Mongo,
+    Snowflake,
+    Postgres,
+}
+
+impl fmt::Display for PeerType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PeerType::Bigquery => write!(f, "BIGQUERY"),
+            PeerType::Mongo => write!(f, "MONGO"),
+            PeerType::Snowflake => write!(f, "SNOWFLAKE"),
+            PeerType::Postgres => write!(f, "POSTGRES"),
+        }
+    }
 }
 
 impl fmt::Display for Statement {
@@ -2792,6 +2839,45 @@ impl fmt::Display for Statement {
                 }
                 if comment.is_some() {
                     write!(f, " COMMENT='{}'", comment.as_ref().unwrap())?;
+                }
+                Ok(())
+            }
+
+            //////////////////////////////////////////
+            // PeerDB Specific Statements
+            //////////////////////////////////////////
+            Statement::CreateMirror {
+                mirror_name,
+                source_table,
+                target_table,
+                with_options,
+            } => {
+                write!(
+                    f,
+                    "CREATE MIRROR {name} FROM {source} TO {target}",
+                    name = mirror_name,
+                    source = source_table,
+                    target = target_table
+                )?;
+                if !with_options.is_empty() {
+                    write!(f, " WITH ({})", display_comma_separated(with_options))?;
+                }
+                Ok(())
+            }
+
+            Statement::CreatePeer {
+                if_not_exists,
+                peer_name,
+                peer_type,
+                with_options,
+            } => {
+                write!(
+                    f,
+                    "CREATE PEER {if_not_exists}{peer_name} FROM {peer_type}",
+                    if_not_exists = if *if_not_exists { "IF NOT EXISTS " } else { "" },
+                )?;
+                if !with_options.is_empty() {
+                    write!(f, " WITH ({})", display_comma_separated(with_options))?;
                 }
                 Ok(())
             }

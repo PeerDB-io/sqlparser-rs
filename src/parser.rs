@@ -2356,6 +2356,10 @@ impl<'a> Parser<'a> {
             self.parse_create_role()
         } else if self.parse_keyword(Keyword::SEQUENCE) {
             self.parse_create_sequence(temporary)
+        } else if self.parse_keyword(Keyword::PEER) {
+            self.parse_create_peer()
+        } else if self.parse_keyword(Keyword::MIRROR) {
+            self.parse_create_mirror()
         } else {
             self.expected("an object type after CREATE", self.peek_token())
         }
@@ -6868,6 +6872,58 @@ impl<'a> Parser<'a> {
             sequence_options.push(SequenceOptions::Cycle(false));
         }
         Ok(sequence_options)
+    }
+
+    /// PeerDB-specific `CREATE PEER`
+    /// example:
+    ///    CREATE PEER bq FROM BIGQUERY with_options
+    pub fn parse_create_peer(&mut self) -> Result<Statement, ParserError> {
+        let if_not_exists = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
+        let peer_name = self.parse_object_name()?;
+        self.expect_keyword(Keyword::FROM)?;
+
+        let peer_type = match self.parse_one_of_keywords(&[
+            Keyword::BIGQUERY,
+            Keyword::MONGO,
+            Keyword::SNOWFLAKE,
+            Keyword::POSTGRES,
+        ]) {
+            Some(Keyword::BIGQUERY) => Ok(PeerType::Bigquery),
+            Some(Keyword::MONGO) => Ok(PeerType::Mongo),
+            Some(Keyword::SNOWFLAKE) => Ok(PeerType::Snowflake),
+            Some(Keyword::POSTGRES) => Ok(PeerType::Postgres),
+            other => {
+                let err = format!("expected peertype of BIGQUERY or MONGODB, got {:#?}", other);
+                Err(ParserError::ParserError(err))
+            }
+        }?;
+
+        let with_options = self.parse_options(Keyword::WITH)?;
+        Ok(Statement::CreatePeer {
+            if_not_exists,
+            peer_name,
+            peer_type,
+            with_options,
+        })
+    }
+
+    pub fn parse_create_mirror(&mut self) -> Result<Statement, ParserError> {
+        let mirror_name = self.parse_object_name()?;
+
+        self.expect_keyword(Keyword::FROM)?;
+        let source_table = self.parse_object_name()?;
+
+        self.expect_keyword(Keyword::TO)?;
+        let target_table = self.parse_object_name()?;
+
+        let with_options = self.parse_options(Keyword::WITH)?;
+
+        Ok(Statement::CreateMirror {
+            mirror_name,
+            source_table,
+            target_table,
+            with_options,
+        })
     }
 
     /// The index of the first unprocessed token.
