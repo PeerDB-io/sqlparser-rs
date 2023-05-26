@@ -212,6 +212,7 @@ define_keywords!(
     DISCONNECT,
     DISTINCT,
     DISTRIBUTE,
+    DIV,
     DO,
     DOUBLE,
     DOW,
@@ -253,6 +254,7 @@ define_keywords!(
     FETCH,
     FIELDS,
     FILE,
+    FILES,
     FILE_FORMAT,
     FILTER,
     FIRST,
@@ -436,6 +438,7 @@ define_keywords!(
     PARTITIONED,
     PARTITIONS,
     PASSWORD,
+    PATTERN,
     PEER,
     PERCENT,
     PERCENTILE_CONT,
@@ -621,6 +624,7 @@ define_keywords!(
     USING,
     UUID,
     VALID,
+    VALIDATION_MODE,
     VALUE,
     VALUES,
     VALUE_OF,
@@ -690,6 +694,7 @@ pub const RESERVED_FOR_TABLE_ALIAS: &[Keyword] = &[
     Keyword::OUTER,
     Keyword::SET,
     Keyword::QUALIFY,
+    Keyword::WINDOW,
 ];
 
 /// Can't be used as a column alias, so that `SELECT <expr> alias`

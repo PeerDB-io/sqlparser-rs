@@ -177,6 +177,7 @@ fn parse_delimited_identifiers() {
             over: None,
             distinct: false,
             special: false,
+            order_by: vec![],
         }),
         expr_from_projection(&select.projection[1]),
     );
@@ -305,10 +306,12 @@ fn parse_similar_to() {
 fn ms() -> TestedDialects {
     TestedDialects {
         dialects: vec![Box::new(MsSqlDialect {})],
+        options: None,
     }
 }
 fn ms_and_generic() -> TestedDialects {
     TestedDialects {
         dialects: vec![Box::new(MsSqlDialect {}), Box::new(GenericDialect {})],
+        options: None,
     }
 }
