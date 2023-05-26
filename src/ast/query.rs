@@ -193,7 +193,7 @@ impl fmt::Display for Table {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
 pub struct Select {
-    pub distinct: bool,
+    pub distinct: Option<Distinct>,
     /// MSSQL syntax: `TOP (<N>) [ PERCENT ] [ WITH TIES ]`
     pub top: Option<Top>,
     /// projection expressions
@@ -216,13 +216,18 @@ pub struct Select {
     pub sort_by: Vec<Expr>,
     /// HAVING
     pub having: Option<Expr>,
+    /// WINDOW AS
+    pub named_window: Vec<NamedWindowDefinition>,
     /// QUALIFY (Snowflake)
     pub qualify: Option<Expr>,
 }
 
 impl fmt::Display for Select {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SELECT{}", if self.distinct { " DISTINCT" } else { "" })?;
+        write!(f, "SELECT")?;
+        if let Some(ref distinct) = self.distinct {
+            write!(f, " {distinct}")?;
+        }
         if let Some(ref top) = self.top {
             write!(f, " {top}")?;
         }
@@ -266,6 +271,9 @@ impl fmt::Display for Select {
         if let Some(ref having) = self.having {
             write!(f, " HAVING {having}")?;
         }
+        if !self.named_window.is_empty() {
+            write!(f, " WINDOW {}", display_comma_separated(&self.named_window))?;
+        }
         if let Some(ref qualify) = self.qualify {
             write!(f, " QUALIFY {qualify}")?;
         }
@@ -305,6 +313,17 @@ impl fmt::Display for LateralView {
             )?;
         }
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct NamedWindowDefinition(pub Ident, pub WindowSpec);
+
+impl fmt::Display for NamedWindowDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} AS ({})", self.0, self.1)
     }
 }
 
@@ -1082,6 +1101,29 @@ impl fmt::Display for NonBlock {
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum Distinct {
+    /// DISTINCT
+    Distinct,
+
+    /// DISTINCT ON({column names})
+    On(Vec<Expr>),
+}
+
+impl fmt::Display for Distinct {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Distinct::Distinct => write!(f, "DISTINCT"),
+            Distinct::On(col_names) => {
+                let col_names = display_comma_separated(col_names);
+                write!(f, "DISTINCT ON ({col_names})")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
 pub struct Top {
     /// SQL semantic equivalent of LIMIT but with same structure as FETCH.
     pub with_ties: bool,
@@ -1105,7 +1147,7 @@ impl fmt::Display for Top {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
 pub struct Values {
-    /// Was there an explict ROWs keyword (MySQL)?
+    /// Was there an explicit ROWs keyword (MySQL)?
     /// <https://dev.mysql.com/doc/refman/8.0/en/values.html>
     pub explicit_row: bool,
     pub rows: Vec<Vec<Expr>>,

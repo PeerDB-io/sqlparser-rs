@@ -35,7 +35,7 @@ use serde::{Deserialize, Serialize};
 use sqlparser_derive::{Visit, VisitMut};
 
 use crate::ast::DollarQuotedString;
-use crate::dialect::{BigQueryDialect, GenericDialect, SnowflakeDialect};
+use crate::dialect::{BigQueryDialect, DuckDbDialect, GenericDialect, SnowflakeDialect};
 use crate::dialect::{Dialect, MySqlDialect};
 use crate::keywords::{Keyword, ALL_KEYWORDS, ALL_KEYWORDS_INDEX};
 
@@ -98,6 +98,8 @@ pub enum Token {
     Mul,
     /// Division operator `/`
     Div,
+    /// Integer division operator `//` in DuckDB
+    DuckIntDiv,
     /// Modulo Operator `%`
     Mod,
     /// String concatenation `||`
@@ -212,6 +214,7 @@ impl fmt::Display for Token {
             Token::Minus => f.write_str("-"),
             Token::Mul => f.write_str("*"),
             Token::Div => f.write_str("/"),
+            Token::DuckIntDiv => f.write_str("//"),
             Token::StringConcat => f.write_str("||"),
             Token::Mod => f.write_str("%"),
             Token::LParen => f.write_str("("),
@@ -673,10 +676,10 @@ impl<'a> Tokenizer<'a> {
                         return Ok(Some(Token::Period));
                     }
 
+                    let mut exponent_part = String::new();
                     // Parse exponent as number
                     if chars.peek() == Some(&'e') || chars.peek() == Some(&'E') {
                         let mut char_clone = chars.peekable.clone();
-                        let mut exponent_part = String::new();
                         exponent_part.push(char_clone.next().unwrap());
 
                         // Optional sign
@@ -700,6 +703,18 @@ impl<'a> Tokenizer<'a> {
                             }
                             // Not an exponent, discard the work done
                             _ => (),
+                        }
+                    }
+
+                    // mysql dialect supports identifiers that start with a numeric prefix,
+                    // as long as they aren't an exponent number.
+                    if dialect_of!(self is MySqlDialect) && exponent_part.is_empty() {
+                        let word =
+                            peeking_take_while(chars, |ch| self.dialect.is_identifier_part(ch));
+
+                        if !word.is_empty() {
+                            s += word.as_str();
+                            return Ok(Some(Token::make_word(s.as_str(), None)));
                         }
                     }
 
@@ -755,6 +770,9 @@ impl<'a> Tokenizer<'a> {
                                 prefix: "//".to_owned(),
                                 comment,
                             })))
+                        }
+                        Some('/') if dialect_of!(self is DuckDbDialect | GenericDialect) => {
+                            self.consume_and_return(chars, Token::DuckIntDiv)
                         }
                         // a regular '/' operator
                         _ => Ok(Some(Token::Div)),

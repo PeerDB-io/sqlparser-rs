@@ -12,26 +12,20 @@
 
 use crate::dialect::Dialect;
 
-// [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server/) dialect
-#[derive(Debug)]
-pub struct MsSqlDialect {}
+#[derive(Debug, Default)]
+pub struct DuckDbDialect;
 
-impl Dialect for MsSqlDialect {
-    fn is_delimited_identifier_start(&self, ch: char) -> bool {
-        ch == '"' || ch == '['
-    }
-
+// In most cases the redshift dialect is identical to [`PostgresSqlDialect`].
+impl Dialect for DuckDbDialect {
     fn is_identifier_start(&self, ch: char) -> bool {
-        // See https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers?view=sql-server-2017#rules-for-regular-identifiers
-        ch.is_alphabetic() || ch == '_' || ch == '#' || ch == '@'
+        ch.is_alphabetic() || ch == '_'
     }
 
     fn is_identifier_part(&self, ch: char) -> bool {
-        ch.is_alphabetic()
-            || ch.is_ascii_digit()
-            || ch == '@'
-            || ch == '$'
-            || ch == '#'
-            || ch == '_'
+        ch.is_alphabetic() || ch.is_ascii_digit() || ch == '$' || ch == '_'
+    }
+
+    fn supports_filter_during_aggregation(&self) -> bool {
+        true
     }
 }
