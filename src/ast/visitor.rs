@@ -12,9 +12,8 @@
 
 //! Recursive visitors for ast Nodes. See [`Visitor`] for more details.
 
-use crate::ast::{Expr, ObjectName, Statement};
+use crate::ast::{Expr, ObjectName, Statement,FunctionArgExpr};
 use core::ops::ControlFlow;
-
 /// A type that can be visited by a [`Visitor`]. See [`Visitor`] for
 /// recursively visiting parsed SQL statements.
 ///
@@ -199,6 +198,15 @@ pub trait Visitor {
         ControlFlow::Continue(())
     }
 
+    /// Invoked for function arguments that appear in the AST before visiting children
+    fn pre_visit_function_arg(&mut self, _expr: &FunctionArgExpr) -> ControlFlow<Self::Break> {
+        ControlFlow::Continue(())
+    }
+
+    /// Invoked for any function arguments that appear in the AST after visiting children
+    fn post_visit_function_arg(&mut self, _expr: &FunctionArgExpr) -> ControlFlow<Self::Break> {
+        ControlFlow::Continue(())
+    }
     /// Invoked for any statements that appear in the AST before visiting children
     fn pre_visit_statement(&mut self, _statement: &Statement) -> ControlFlow<Self::Break> {
         ControlFlow::Continue(())
@@ -274,6 +282,16 @@ pub trait VisitorMut {
 
     /// Invoked for any expressions that appear in the AST
     fn post_visit_expr(&mut self, _expr: &mut Expr) -> ControlFlow<Self::Break> {
+        ControlFlow::Continue(())
+    }
+
+    /// Invoked for function arguments that appear in the AST before visiting children
+    fn pre_visit_function_arg(&mut self, _expr: &mut FunctionArgExpr) -> ControlFlow<Self::Break> {
+        ControlFlow::Continue(())
+    }
+
+    /// Invoked for any function arguments that appear in the AST after visiting children
+    fn post_visit_function_arg(&mut self, _expr: &mut FunctionArgExpr) -> ControlFlow<Self::Break> {
         ControlFlow::Continue(())
     }
 
@@ -376,6 +394,42 @@ where
     ControlFlow::Continue(())
 }
 
+struct FunctionArgExprVisitor<F>(F);
+
+impl<E, F: FnMut(&FunctionArgExpr) -> ControlFlow<E>> Visitor for FunctionArgExprVisitor<F> {
+    type Break = E;
+
+    fn pre_visit_function_arg(&mut self, expr: &FunctionArgExpr) -> ControlFlow<Self::Break> {
+        self.0(expr)
+    }
+}
+
+impl<E, F: FnMut(&mut FunctionArgExpr) -> ControlFlow<E>> VisitorMut for FunctionArgExprVisitor<F> {
+    type Break = E;
+
+    fn post_visit_function_arg(&mut self, expr: &mut FunctionArgExpr) -> ControlFlow<Self::Break> {
+        self.0(expr)
+    }
+}
+
+pub fn visit_function_arguments<V, E, F>(v: &V, f: F) -> ControlFlow<E>
+where
+    V: Visit,
+    F: FnMut(&FunctionArgExpr) -> ControlFlow<E>,
+{
+    let mut visitor = FunctionArgExprVisitor(f);
+    v.visit(&mut visitor)?;
+    ControlFlow::Continue(())
+}
+pub fn visit_function_arguments_mut<V, E, F>(v: &mut V, f: F) -> ControlFlow<E>
+where
+    V: VisitMut,
+    F: FnMut(&mut FunctionArgExpr) -> ControlFlow<E>,
+{
+    v.visit(&mut FunctionArgExprVisitor(f))?;
+    ControlFlow::Continue(())
+}
+
 struct ExprVisitor<F>(F);
 
 impl<E, F: FnMut(&Expr) -> ControlFlow<E>> Visitor for ExprVisitor<F> {
@@ -393,6 +447,7 @@ impl<E, F: FnMut(&mut Expr) -> ControlFlow<E>> VisitorMut for ExprVisitor<F> {
         self.0(expr)
     }
 }
+
 
 /// Invokes the provided closure on all expressions (e.g. `1 + 2`) present in `v`
 ///
@@ -432,7 +487,6 @@ where
     v.visit(&mut visitor)?;
     ControlFlow::Continue(())
 }
-
 /// Invokes the provided closure iteratively with a mutable reference to all expressions
 /// present in `v`.
 ///
@@ -496,6 +550,7 @@ where
     v.visit(&mut ExprVisitor(f))?;
     ControlFlow::Continue(())
 }
+
 
 struct StatementVisitor<F>(F);
 
