@@ -12,7 +12,7 @@
 
 //! Recursive visitors for ast Nodes. See [`Visitor`] for more details.
 
-use crate::ast::{Expr, ObjectName, Statement,FunctionArgExpr};
+use crate::ast::{Expr, FunctionArgExpr, ObjectName, Statement};
 use core::ops::ControlFlow;
 /// A type that can be visited by a [`Visitor`]. See [`Visitor`] for
 /// recursively visiting parsed SQL statements.
@@ -448,7 +448,6 @@ impl<E, F: FnMut(&mut Expr) -> ControlFlow<E>> VisitorMut for ExprVisitor<F> {
     }
 }
 
-
 /// Invokes the provided closure on all expressions (e.g. `1 + 2`) present in `v`
 ///
 /// # Example
@@ -550,7 +549,6 @@ where
     v.visit(&mut ExprVisitor(f))?;
     ControlFlow::Continue(())
 }
-
 
 struct StatementVisitor<F>(F);
 
