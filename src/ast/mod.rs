@@ -3403,7 +3403,11 @@ impl fmt::Display for Assignment {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+#[cfg_attr(
+    feature = "visitor",
+    derive(Visit, VisitMut),
+    visit(with = "visit_function_arg")
+)]
 pub enum FunctionArgExpr {
     Expr(Expr),
     /// Qualified wildcard, e.g. `alias.*` or `schema.table.*`.
