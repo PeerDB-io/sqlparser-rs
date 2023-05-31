@@ -12,8 +12,9 @@
 
 //! Recursive visitors for ast Nodes. See [`Visitor`] for more details.
 
-use crate::ast::{Expr, FunctionArgExpr, ObjectName, Statement};
+use crate::ast::{Expr, FunctionArgExpr, ObjectName, SetExpr, Statement};
 use core::ops::ControlFlow;
+
 /// A type that can be visited by a [`Visitor`]. See [`Visitor`] for
 /// recursively visiting parsed SQL statements.
 ///
@@ -198,6 +199,16 @@ pub trait Visitor {
         ControlFlow::Continue(())
     }
 
+    /// Invoked for any set expressions that appear in the AST before visiting children
+    fn pre_visit_setexpr(&mut self, _set_expr: &SetExpr) -> ControlFlow<Self::Break> {
+        ControlFlow::Continue(())
+    }
+
+    /// Invoked for any set expressions that appear in the AST after visiting children
+    fn post_visit_setexpr(&mut self, _set_expr: &SetExpr) -> ControlFlow<Self::Break> {
+        ControlFlow::Continue(())
+    }
+
     /// Invoked for function arguments that appear in the AST before visiting children
     fn pre_visit_function_arg(&mut self, _expr: &FunctionArgExpr) -> ControlFlow<Self::Break> {
         ControlFlow::Continue(())
@@ -282,6 +293,16 @@ pub trait VisitorMut {
 
     /// Invoked for any expressions that appear in the AST
     fn post_visit_expr(&mut self, _expr: &mut Expr) -> ControlFlow<Self::Break> {
+        ControlFlow::Continue(())
+    }
+
+    /// Invoked for any expressions that appear in the AST before visiting children
+    fn pre_visit_setexpr(&mut self, _set_expr: &mut SetExpr) -> ControlFlow<Self::Break> {
+        ControlFlow::Continue(())
+    }
+
+    /// Invoked for any expressions that appear in the AST after visiting children
+    fn post_visit_setexpr(&mut self, _set_expr: &mut SetExpr) -> ControlFlow<Self::Break> {
         ControlFlow::Continue(())
     }
 
@@ -412,7 +433,7 @@ impl<E, F: FnMut(&mut FunctionArgExpr) -> ControlFlow<E>> VisitorMut for Functio
     }
 }
 
-pub fn visit_function_arguments<V, E, F>(v: &V, f: F) -> ControlFlow<E>
+pub fn visit_function_arg<V, E, F>(v: &V, f: F) -> ControlFlow<E>
 where
     V: Visit,
     F: FnMut(&FunctionArgExpr) -> ControlFlow<E>,
@@ -421,12 +442,48 @@ where
     v.visit(&mut visitor)?;
     ControlFlow::Continue(())
 }
-pub fn visit_function_arguments_mut<V, E, F>(v: &mut V, f: F) -> ControlFlow<E>
+pub fn visit_function_arg_mut<V, E, F>(v: &mut V, f: F) -> ControlFlow<E>
 where
     V: VisitMut,
     F: FnMut(&mut FunctionArgExpr) -> ControlFlow<E>,
 {
     v.visit(&mut FunctionArgExprVisitor(f))?;
+    ControlFlow::Continue(())
+}
+
+struct SetExprVisitor<F>(F);
+
+impl<E, F: FnMut(&SetExpr) -> ControlFlow<E>> Visitor for SetExprVisitor<F> {
+    type Break = E;
+
+    fn pre_visit_setexpr(&mut self, expr: &SetExpr) -> ControlFlow<Self::Break> {
+        self.0(expr)
+    }
+}
+
+impl<E, F: FnMut(&mut SetExpr) -> ControlFlow<E>> VisitorMut for SetExprVisitor<F> {
+    type Break = E;
+
+    fn post_visit_setexpr(&mut self, expr: &mut SetExpr) -> ControlFlow<Self::Break> {
+        self.0(expr)
+    }
+}
+
+pub fn visit_setexpr<V, E, F>(v: &V, f: F) -> ControlFlow<E>
+where
+    V: Visit,
+    F: FnMut(&SetExpr) -> ControlFlow<E>,
+{
+    let mut visitor = SetExprVisitor(f);
+    v.visit(&mut visitor)?;
+    ControlFlow::Continue(())
+}
+pub fn visit_setexpr_mut<V, E, F>(v: &mut V, f: F) -> ControlFlow<E>
+where
+    V: VisitMut,
+    F: FnMut(&mut SetExpr) -> ControlFlow<E>,
+{
+    v.visit(&mut SetExprVisitor(f))?;
     ControlFlow::Continue(())
 }
 
