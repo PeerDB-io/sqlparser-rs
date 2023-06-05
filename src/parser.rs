@@ -3038,6 +3038,8 @@ impl<'a> Parser<'a> {
             ObjectType::Stage
         } else if self.parse_keyword(Keyword::FUNCTION) {
             return self.parse_drop_function();
+        } else if self.parse_keyword(Keyword::MIRROR) {
+            return self.parse_drop_mirror();
         } else {
             return self.expected(
                 "TABLE, VIEW, INDEX, ROLE, SCHEMA, FUNCTION, STAGE or SEQUENCE after DROP",
@@ -3102,6 +3104,18 @@ impl<'a> Parser<'a> {
         };
 
         Ok(DropFunctionDesc { name, args })
+    }
+
+    /// ```sql
+    /// DROP MIRROR [IF EXISTS] name
+    /// ```
+    fn parse_drop_mirror(&mut self) -> Result<Statement, ParserError> {
+        let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+        let mirror_name = self.parse_object_name()?;
+        Ok(Statement::DropMirror {
+            if_exists,
+            mirror_name,
+        })
     }
 
     /// ```sql
