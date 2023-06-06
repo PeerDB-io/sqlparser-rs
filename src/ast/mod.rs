@@ -1737,6 +1737,12 @@ pub enum Statement {
         // Options for the mirror job.
         with_options: Vec<SqlOption>,
     },
+    /// DROP MIRROR [IF EXISTS] mirror_name
+    DropMirror {
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        if_exists: bool,
+        mirror_name: ObjectName,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -2990,7 +2996,6 @@ impl fmt::Display for Statement {
                 }
                 Ok(())
             }
-
             Statement::CreatePeer {
                 if_not_exists,
                 peer_name,
@@ -3005,6 +3010,17 @@ impl fmt::Display for Statement {
                 if !with_options.is_empty() {
                     write!(f, " WITH ({})", display_comma_separated(with_options))?;
                 }
+                Ok(())
+            }
+            Statement::DropMirror {
+                if_exists,
+                mirror_name,
+            } => {
+                write!(
+                    f,
+                    "DROP MIRROR {if_exists}{mirror_name}",
+                    if_exists = if *if_exists { "IF EXISTS " } else { "" },
+                )?;
                 Ok(())
             }
         }
