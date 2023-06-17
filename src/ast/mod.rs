@@ -3002,7 +3002,7 @@ impl fmt::Display for Statement {
             } => {
                 write!(
                     f,
-                    "CREATE MIRROR {name} FROM {source} TO {target} WITH TABLE MAPPING {formatted_table_mappings}",
+                    "CREATE MIRROR {name} FROM {source} TO {target} WITH TABLE MAPPING ({formatted_table_mappings})",
                     name = mirror_name,
                     source = source_peer,
                     target = target_peer,
