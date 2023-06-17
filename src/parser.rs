@@ -3814,6 +3814,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_table_mappings(&mut self) -> Result<Vec<TableMapping>, ParserError> {
+        self.expect_token(&Token::LParen)?;
+        let table_mappings = self.parse_comma_separated(Parser::parse_table_mapping)?;
+        self.expect_token(&Token::RParen)?;
+        Ok(table_mappings)
+    }
+
     pub fn parse_index_type(&mut self) -> Result<IndexType, ParserError> {
         if self.parse_keyword(Keyword::BTREE) {
             Ok(IndexType::BTree)
@@ -7064,7 +7071,7 @@ impl<'a> Parser<'a> {
             }
         }?;
 
-        let with_options = self.parse_options(Keyword::WITH)?;
+        let with_options = self.parse_options(Keyword::WITH)?; 
         Ok(Statement::CreatePeer {
             if_not_exists,
             peer_name,
@@ -7077,17 +7084,21 @@ impl<'a> Parser<'a> {
         let mirror_name = self.parse_object_name()?;
 
         self.expect_keyword(Keyword::FROM)?;
-        let source_table = self.parse_object_name()?;
+        let source_peer = self.parse_object_name()?;
 
         self.expect_keyword(Keyword::TO)?;
-        let target_table = self.parse_object_name()?;
+        let target_peer = self.parse_object_name()?;
 
+        self.expect_keywords(&[Keyword::WITH, Keyword::TABLE, Keyword::MAPPING])?;
+
+        let table_mappings = self.parse_table_mappings()?;
         let with_options = self.parse_options(Keyword::WITH)?;
 
         Ok(Statement::CreateMirror {
             mirror_name,
-            source_table,
-            target_table,
+            source_peer,
+            target_peer,
+            table_mappings,
             with_options,
         })
     }
@@ -7167,6 +7178,16 @@ impl<'a> Parser<'a> {
         Ok(Statement::CreateType {
             name,
             representation: UserDefinedTypeRepresentation::Composite { attributes },
+        })
+    }
+
+    fn parse_table_mapping(&mut self) -> Result<TableMapping, ParserError> {
+        let source_table_identifier = self.parse_object_name()?;
+        self.expect_token(&Token::Colon)?;
+        let destination_table_identifier = self.parse_object_name()?;
+        Ok(TableMapping {
+            source_table_identifier,
+            target_table_identifier: destination_table_identifier,
         })
     }
 }

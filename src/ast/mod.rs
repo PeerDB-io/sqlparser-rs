@@ -1731,15 +1731,18 @@ pub enum Statement {
         with_options: Vec<SqlOption>,
     },
     /// CREATE MIRROR mirror_name FROM\
-    ///  peer_1.schema_1.tbl_1 TO peer_2.schema_2.tbl_2
+    /// peer_1 TO peer_2
+    /// WITH TABLE MAPPING sch1.tbl1:sch2.tbl2, sch1.tbl3:sch2.tbl3
     /// WITH (option1 = value1, option2 = value2, ...)
     CreateMirror {
         // Name of the mirror job.
         mirror_name: ObjectName,
-        // Name of the source table.
-        source_table: ObjectName,
-        // Name of the target table.
-        target_table: ObjectName,
+        // name of the source peer
+        source_peer: ObjectName,
+        // name of the target peer
+        target_peer: ObjectName,
+        // list of mappings from source to target tables.
+        table_mappings: Vec<TableMapping>,
         // Options for the mirror job.
         with_options: Vec<SqlOption>,
     },
@@ -2992,16 +2995,18 @@ impl fmt::Display for Statement {
             //////////////////////////////////////////
             Statement::CreateMirror {
                 mirror_name,
-                source_table,
-                target_table,
+                source_peer,
+                target_peer,
+                table_mappings,
                 with_options,
             } => {
                 write!(
                     f,
-                    "CREATE MIRROR {name} FROM {source} TO {target}",
+                    "CREATE MIRROR {name} FROM {source} TO {target} WITH TABLE MAPPING {formatted_table_mappings}",
                     name = mirror_name,
-                    source = source_table,
-                    target = target_table
+                    source = source_peer,
+                    target = target_peer,
+                    formatted_table_mappings = display_comma_separated(table_mappings)
                 )?;
                 if !with_options.is_empty() {
                     write!(f, " WITH ({})", display_comma_separated(with_options))?;
@@ -4476,6 +4481,27 @@ impl fmt::Display for SearchModifier {
         }
 
         Ok(())
+    }
+}
+
+//////////////////////////////////////////
+// PeerDB Specific SQL Structures
+//////////////////////////////////////////
+
+/// Used for mappings in flow jobs.
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct TableMapping {
+    /// The value of the source table identifier without quotes.
+    pub source_table_identifier: ObjectName,
+    /// The value of the destination table identifier without quotes.
+    pub target_table_identifier: ObjectName,
+}
+
+impl fmt::Display for TableMapping {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.source_table_identifier, self.target_table_identifier)
     }
 }
 
