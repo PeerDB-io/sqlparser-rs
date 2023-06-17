@@ -349,6 +349,7 @@ define_keywords!(
     LOGIN,
     LOWER,
     MANAGEDLOCATION,
+    MAPPING,
     MATCH,
     MATCHED,
     MATERIALIZED,
