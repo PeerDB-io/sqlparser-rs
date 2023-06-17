@@ -2962,14 +2962,16 @@ fn parse_select_group_by_cube() {
 
 #[test]
 fn parse_create_mirror() {
-    match pg().verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING s1.t1:s2.t2 WITH (key1 = 'value1', key2 = 'value2')") {
+    match pg().verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2, s1.t3:s2.t4) WITH (key1 = 'value1', key2 = 'value2')") {
          Statement::CreateMirror { mirror_name, source_peer, target_peer, table_mappings, with_options } => {
                 assert_eq!(mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
                 assert_eq!(source_peer, ObjectName(vec![Ident::new("p1")]));
                 assert_eq!(target_peer, ObjectName(vec![Ident::new("p2")]));
-                assert_eq!(table_mappings.len(), 1);
+                assert_eq!(table_mappings.len(), 2);
                 assert_eq!(table_mappings[0].source_table_identifier, ObjectName(vec![Ident::new("s1"), Ident::new("t1")]));
                 assert_eq!(table_mappings[0].target_table_identifier, ObjectName(vec![Ident::new("s2"), Ident::new("t2")]));
+                assert_eq!(table_mappings[1].source_table_identifier, ObjectName(vec![Ident::new("s1"), Ident::new("t3")]));
+                assert_eq!(table_mappings[1].target_table_identifier, ObjectName(vec![Ident::new("s2"), Ident::new("t4")]));
                 assert_eq!(with_options.len(), 2);
                 assert_eq!(with_options[0].name, Ident::new("key1"));
                 assert_eq!(with_options[0].value, Value::SingleQuotedString("value1".into()));
