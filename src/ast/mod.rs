@@ -4501,7 +4501,11 @@ pub struct TableMapping {
 
 impl fmt::Display for TableMapping {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.source_table_identifier, self.target_table_identifier)
+        write!(
+            f,
+            "{}:{}",
+            self.source_table_identifier, self.target_table_identifier
+        )
     }
 }
 

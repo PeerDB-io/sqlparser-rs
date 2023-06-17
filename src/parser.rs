@@ -7071,7 +7071,7 @@ impl<'a> Parser<'a> {
             }
         }?;
 
-        let with_options = self.parse_options(Keyword::WITH)?; 
+        let with_options = self.parse_options(Keyword::WITH)?;
         Ok(Statement::CreatePeer {
             if_not_exists,
             peer_name,
