@@ -7060,13 +7060,15 @@ impl<'a> Parser<'a> {
             Keyword::MONGO,
             Keyword::SNOWFLAKE,
             Keyword::POSTGRES,
+            Keyword::KAFKA,
         ]) {
             Some(Keyword::BIGQUERY) => Ok(PeerType::Bigquery),
             Some(Keyword::MONGO) => Ok(PeerType::Mongo),
             Some(Keyword::SNOWFLAKE) => Ok(PeerType::Snowflake),
             Some(Keyword::POSTGRES) => Ok(PeerType::Postgres),
+            Some(Keyword::KAFKA) => Ok(PeerType::Kafka),
             other => {
-                let err = format!("expected peertype of BIGQUERY or MONGODB, got {:#?}", other);
+                let err = format!("expected peertype of POSTGRES,SNOWFLAKE,BIGQUERY,MONGO or KAFKA, got {:#?}", other);
                 Err(ParserError::ParserError(err))
             }
         }?;
