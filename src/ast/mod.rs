@@ -1762,7 +1762,7 @@ pub enum PeerType {
     Mongo,
     Snowflake,
     Postgres,
-    Kafka
+    Kafka,
 }
 
 impl fmt::Display for PeerType {

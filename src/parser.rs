@@ -7068,7 +7068,10 @@ impl<'a> Parser<'a> {
             Some(Keyword::POSTGRES) => Ok(PeerType::Postgres),
             Some(Keyword::KAFKA) => Ok(PeerType::Kafka),
             other => {
-                let err = format!("expected peertype of POSTGRES,SNOWFLAKE,BIGQUERY,MONGO or KAFKA, got {:#?}", other);
+                let err = format!(
+                    "expected peertype of POSTGRES,SNOWFLAKE,BIGQUERY,MONGO or KAFKA, got {:#?}",
+                    other
+                );
                 Err(ParserError::ParserError(err))
             }
         }?;
