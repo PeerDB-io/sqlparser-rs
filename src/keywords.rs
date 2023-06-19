@@ -324,6 +324,7 @@ define_keywords!(
     JSON,
     JSONFILE,
     JULIAN,
+    KAFKA,
     KEY,
     KILL,
     LAG,

@@ -1762,6 +1762,7 @@ pub enum PeerType {
     Mongo,
     Snowflake,
     Postgres,
+    Kafka,
 }
 
 impl fmt::Display for PeerType {
@@ -1771,6 +1772,7 @@ impl fmt::Display for PeerType {
             PeerType::Mongo => write!(f, "MONGO"),
             PeerType::Snowflake => write!(f, "SNOWFLAKE"),
             PeerType::Postgres => write!(f, "POSTGRES"),
+            PeerType::Kafka => write!(f, "KAFKA"),
         }
     }
 }
