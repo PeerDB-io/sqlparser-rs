@@ -7113,9 +7113,7 @@ impl<'a> Parser<'a> {
                         }),
                     })
                 }
-                _ => {
-                    return self.expected("$$<query string>$$", token);
-                }
+                _ => self.expected("$$[query string]$$", token),
             }
         } else {
             // mirror CDC
