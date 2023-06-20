@@ -1134,6 +1134,54 @@ pub enum Password {
     NullPassword,
 }
 
+/// CREATE MIRROR mirror_name FROM
+/// peer_1 TO peer_2
+/// WITH TABLE MAPPING sch1.tbl1:sch2.tbl2, sch1.tbl3:sch2.tbl3
+/// WITH OPTIONS (option1 = value1, option2 = value2, ...)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct CreateMirrorForCDC {
+    // Name of the mirror job.
+    pub mirror_name: ObjectName,
+    // name of the source peer
+    pub source_peer: ObjectName,
+    // name of the target peer
+    pub target_peer: ObjectName,
+    // list of mappings from source to target tables.
+    pub table_mappings: Vec<TableMapping>,
+    // Options for the mirror job.
+    pub with_options: Vec<SqlOption>,
+}
+
+/// CREATE MIRROR mirror_name
+/// FROM peer_1 TO peer_2 FOR
+/// $$<query string>$$
+/// WITH OPTIONS (option1 = value1, option2 = value2, ...)'
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct CreateMirrorForSelect {
+    // Name of the mirror job.
+    pub mirror_name: ObjectName,
+    // name of the source peer
+    pub source_peer: ObjectName,
+    // name of the target peer
+    pub target_peer: ObjectName,
+    // query string
+    pub query_string: String,
+    // Options for the mirror job.
+    pub with_options: Vec<SqlOption>,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum CreateMirror {
+    CDC(CreateMirrorForCDC),
+    Select(CreateMirrorForSelect)
+}
+
 /// A top-level statement (SELECT, INSERT, CREATE, etc.)
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -1730,21 +1778,8 @@ pub enum Statement {
         peer_type: PeerType,
         with_options: Vec<SqlOption>,
     },
-    /// CREATE MIRROR mirror_name FROM\
-    /// peer_1 TO peer_2
-    /// WITH TABLE MAPPING sch1.tbl1:sch2.tbl2, sch1.tbl3:sch2.tbl3
-    /// WITH (option1 = value1, option2 = value2, ...)
     CreateMirror {
-        // Name of the mirror job.
-        mirror_name: ObjectName,
-        // name of the source peer
-        source_peer: ObjectName,
-        // name of the target peer
-        target_peer: ObjectName,
-        // list of mappings from source to target tables.
-        table_mappings: Vec<TableMapping>,
-        // Options for the mirror job.
-        with_options: Vec<SqlOption>,
+        create_mirror: CreateMirror
     },
     /// DROP MIRROR [IF EXISTS] mirror_name
     DropMirror {
@@ -2996,22 +3031,35 @@ impl fmt::Display for Statement {
             // PeerDB Specific Statements
             //////////////////////////////////////////
             Statement::CreateMirror {
-                mirror_name,
-                source_peer,
-                target_peer,
-                table_mappings,
-                with_options,
+                create_mirror
             } => {
-                write!(
-                    f,
-                    "CREATE MIRROR {name} FROM {source} TO {target} WITH TABLE MAPPING ({formatted_table_mappings})",
-                    name = mirror_name,
-                    source = source_peer,
-                    target = target_peer,
-                    formatted_table_mappings = display_comma_separated(table_mappings)
-                )?;
-                if !with_options.is_empty() {
-                    write!(f, " WITH ({})", display_comma_separated(with_options))?;
+                match create_mirror {
+                    CreateMirror::CDC(cdc) => {
+                        write!(
+                            f,
+                            "CREATE MIRROR {mirror_name} FROM {source} TO {target} WITH TABLE MAPPING ({formatted_table_mappings})",
+                            mirror_name = cdc.mirror_name,
+                            source = cdc.source_peer,
+                            target = cdc.target_peer,
+                            formatted_table_mappings = display_comma_separated(&cdc.table_mappings)
+                        )?;
+                        if !cdc.with_options.is_empty() {
+                            write!(f, " WITH OPTIONS ({})", display_comma_separated(&cdc.with_options))?;
+                        }
+                    },
+                    CreateMirror::Select(select) => {
+                        write!(
+                            f,
+                            "CREATE MIRROR {mirror_name} FROM {source} TO {target} FOR $${query_string}$$",
+                            mirror_name = select.mirror_name,
+                            source = select.source_peer,
+                            target = select.target_peer,
+                            query_string = select.query_string
+                        )?;
+                        if !select.with_options.is_empty() {
+                            write!(f, " WITH OPTIONS ({})", display_comma_separated(&select.with_options))?;
+                        }
+                    }
                 }
                 Ok(())
             }
