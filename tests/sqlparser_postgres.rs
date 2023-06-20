@@ -2966,24 +2966,23 @@ fn parse_create_single_mirror_no_options() {
     match pg()
         .verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2)")
     {
-        Statement::CreateMirror { create_mirror } => match create_mirror {
-            CDC(cdc) => {
-                assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
-                assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
-                assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
-                assert_eq!(cdc.table_mappings.len(), 1);
-                assert_eq!(
-                    cdc.table_mappings[0].source_table_identifier,
-                    ObjectName(vec![Ident::new("s1"), Ident::new("t1")])
-                );
-                assert_eq!(
-                    cdc.table_mappings[0].target_table_identifier,
-                    ObjectName(vec![Ident::new("s2"), Ident::new("t2")])
-                );
-                assert_eq!(cdc.with_options.len(), 0);
-            }
-            _ => unreachable!(),
-        },
+        Statement::CreateMirror {
+            create_mirror: CDC(cdc),
+        } => {
+            assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
+            assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
+            assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
+            assert_eq!(cdc.table_mappings.len(), 1);
+            assert_eq!(
+                cdc.table_mappings[0].source_table_identifier,
+                ObjectName(vec![Ident::new("s1"), Ident::new("t1")])
+            );
+            assert_eq!(
+                cdc.table_mappings[0].target_table_identifier,
+                ObjectName(vec![Ident::new("s2"), Ident::new("t2")])
+            );
+            assert_eq!(cdc.with_options.len(), 0);
+        }
         _ => unreachable!(),
     }
 }
@@ -2991,21 +2990,16 @@ fn parse_create_single_mirror_no_options() {
 #[test]
 fn parse_create_single_mirror() {
     match pg().verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2) WITH OPTIONS (key1 = 'value1')") {
-         Statement::CreateMirror { create_mirror } => {
-                match create_mirror {
-                    CDC(cdc) => {
-                        assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
-                        assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
-                        assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
-                        assert_eq!(cdc.table_mappings.len(), 1);
-                        assert_eq!(cdc.table_mappings[0].source_table_identifier, ObjectName(vec![Ident::new("s1"), Ident::new("t1")]));
-                        assert_eq!(cdc.table_mappings[0].target_table_identifier, ObjectName(vec![Ident::new("s2"), Ident::new("t2")]));
-                        assert_eq!(cdc.with_options.len(), 1);
-                        assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
-                        assert_eq!(cdc.with_options[0].value, Value::SingleQuotedString("value1".into()));
-                    },
-                    _ => unreachable!()
-                }
+         Statement::CreateMirror { create_mirror: CDC(cdc) } => {
+            assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
+            assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
+            assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
+            assert_eq!(cdc.table_mappings.len(), 1);
+            assert_eq!(cdc.table_mappings[0].source_table_identifier, ObjectName(vec![Ident::new("s1"), Ident::new("t1")]));
+            assert_eq!(cdc.table_mappings[0].target_table_identifier, ObjectName(vec![Ident::new("s2"), Ident::new("t2")]));
+            assert_eq!(cdc.with_options.len(), 1);
+            assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
+            assert_eq!(cdc.with_options[0].value, Value::SingleQuotedString("value1".into()));
          },
         _ => unreachable!(),
     }
@@ -3014,26 +3008,21 @@ fn parse_create_single_mirror() {
 #[test]
 fn parse_create_multi_mirror() {
     match pg().verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2, s1.t3:s2.t4) WITH OPTIONS (key1 = 'value1', key2 = 'value2')") {
-         Statement::CreateMirror { create_mirror } => {
-                match create_mirror {
-                    CDC(cdc) => {
-                        assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
-                        assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
-                        assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
-                        assert_eq!(cdc.table_mappings.len(), 2);
-                        assert_eq!(cdc.table_mappings[0].source_table_identifier, ObjectName(vec![Ident::new("s1"), Ident::new("t1")]));
-                        assert_eq!(cdc.table_mappings[0].target_table_identifier, ObjectName(vec![Ident::new("s2"), Ident::new("t2")]));
-                        assert_eq!(cdc.table_mappings[1].source_table_identifier, ObjectName(vec![Ident::new("s1"), Ident::new("t3")]));
-                        assert_eq!(cdc.table_mappings[1].target_table_identifier, ObjectName(vec![Ident::new("s2"), Ident::new("t4")]));
-                        assert_eq!(cdc.with_options.len(), 2);
-                        assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
-                        assert_eq!(cdc.with_options[0].value, Value::SingleQuotedString("value1".into()));
-                        assert_eq!(cdc.with_options[1].name, Ident::new("key2"));
-                        assert_eq!(cdc.with_options[1].value, Value::SingleQuotedString("value2".into()));
-                    },
-                    _ => unreachable!()
-                }
-         },
+         Statement::CreateMirror { create_mirror: CDC(cdc) } => {
+            assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
+            assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
+            assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
+            assert_eq!(cdc.table_mappings.len(), 2);
+            assert_eq!(cdc.table_mappings[0].source_table_identifier, ObjectName(vec![Ident::new("s1"), Ident::new("t1")]));
+            assert_eq!(cdc.table_mappings[0].target_table_identifier, ObjectName(vec![Ident::new("s2"), Ident::new("t2")]));
+            assert_eq!(cdc.table_mappings[1].source_table_identifier, ObjectName(vec![Ident::new("s1"), Ident::new("t3")]));
+            assert_eq!(cdc.table_mappings[1].target_table_identifier, ObjectName(vec![Ident::new("s2"), Ident::new("t4")]));
+            assert_eq!(cdc.with_options.len(), 2);
+            assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
+            assert_eq!(cdc.with_options[0].value, Value::SingleQuotedString("value1".into()));
+            assert_eq!(cdc.with_options[1].name, Ident::new("key2"));
+            assert_eq!(cdc.with_options[1].value, Value::SingleQuotedString("value2".into()));
+        },
         _ => unreachable!(),
     }
 }
@@ -3041,21 +3030,16 @@ fn parse_create_multi_mirror() {
 #[test]
 fn parse_mirror_for_select() {
     match pg().verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 FOR $$SELECT 1$$ WITH OPTIONS (key1 = 'value1', key2 = 'value2')") {
-         Statement::CreateMirror { create_mirror } => {
-                match create_mirror {
-                    MirrorSelect(select) => {
-                        assert_eq!(select.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
-                        assert_eq!(select.source_peer, ObjectName(vec![Ident::new("p1")]));
-                        assert_eq!(select.target_peer, ObjectName(vec![Ident::new("p2")]));
-                        assert_eq!(select.query_string, "SELECT 1");
-                        assert_eq!(select.with_options.len(), 2);
-                        assert_eq!(select.with_options[0].name, Ident::new("key1"));
-                        assert_eq!(select.with_options[0].value, Value::SingleQuotedString("value1".into()));
-                        assert_eq!(select.with_options[1].name, Ident::new("key2"));
-                        assert_eq!(select.with_options[1].value, Value::SingleQuotedString("value2".into()));
-                    },
-                    _ => unreachable!()
-                }
+         Statement::CreateMirror { create_mirror: MirrorSelect(select) } => {
+            assert_eq!(select.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
+            assert_eq!(select.source_peer, ObjectName(vec![Ident::new("p1")]));
+            assert_eq!(select.target_peer, ObjectName(vec![Ident::new("p2")]));
+            assert_eq!(select.query_string, "SELECT 1");
+            assert_eq!(select.with_options.len(), 2);
+            assert_eq!(select.with_options[0].name, Ident::new("key1"));
+            assert_eq!(select.with_options[0].value, Value::SingleQuotedString("value1".into()));
+            assert_eq!(select.with_options[1].name, Ident::new("key2"));
+            assert_eq!(select.with_options[1].value, Value::SingleQuotedString("value2".into()));
          },
         _ => unreachable!(),
     }
