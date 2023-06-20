@@ -1156,7 +1156,7 @@ pub struct CreateMirrorForCDC {
 
 /// CREATE MIRROR mirror_name
 /// FROM peer_1 TO peer_2 FOR
-/// $$<query string>$$
+/// $$[query string]$$
 /// WITH OPTIONS (option1 = value1, option2 = value2, ...)'
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
