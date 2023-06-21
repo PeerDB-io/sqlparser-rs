@@ -3071,11 +3071,7 @@ impl fmt::Display for Statement {
                             formatted_table_mappings = display_comma_separated(&cdc.table_mappings)
                         )?;
                         if !cdc.with_options.is_empty() {
-                            write!(
-                                f,
-                                " WITH ({})",
-                                display_comma_separated(&cdc.with_options)
-                            )?;
+                            write!(f, " WITH ({})", display_comma_separated(&cdc.with_options))?;
                         }
                     }
                     CreateMirror::Select(select) => {
