@@ -1134,6 +1134,54 @@ pub enum Password {
     NullPassword,
 }
 
+/// CREATE MIRROR mirror_name FROM
+/// peer_1 TO peer_2
+/// WITH TABLE MAPPING sch1.tbl1:sch2.tbl2, sch1.tbl3:sch2.tbl3
+/// WITH OPTIONS (option1 = value1, option2 = value2, ...)
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct CreateMirrorForCDC {
+    // Name of the mirror job.
+    pub mirror_name: ObjectName,
+    // name of the source peer
+    pub source_peer: ObjectName,
+    // name of the target peer
+    pub target_peer: ObjectName,
+    // list of mappings from source to target tables.
+    pub table_mappings: Vec<TableMapping>,
+    // Options for the mirror job.
+    pub with_options: Vec<SqlOption>,
+}
+
+/// CREATE MIRROR mirror_name
+/// FROM peer_1 TO peer_2 FOR
+/// $$[query string]$$
+/// WITH OPTIONS (option1 = value1, option2 = value2, ...)'
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct CreateMirrorForSelect {
+    // Name of the mirror job.
+    pub mirror_name: ObjectName,
+    // name of the source peer
+    pub source_peer: ObjectName,
+    // name of the target peer
+    pub target_peer: ObjectName,
+    // query string
+    pub query_string: String,
+    // Options for the mirror job.
+    pub with_options: Vec<SqlOption>,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum CreateMirror {
+    CDC(CreateMirrorForCDC),
+    Select(CreateMirrorForSelect),
+}
+
 /// A top-level statement (SELECT, INSERT, CREATE, etc.)
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -1435,7 +1483,9 @@ pub enum Statement {
     ///
     /// Note: this is a PostgreSQL-specific statement,
     /// but may also compatible with other SQL.
-    Discard { object_type: DiscardObject },
+    Discard {
+        object_type: DiscardObject,
+    },
     /// SET `[ SESSION | LOCAL ]` ROLE role_name. Examples: [ANSI][1], [Postgresql][2], [MySQL][3], and [Oracle][4].
     ///
     /// [1]: https://jakewheat.github.io/sql-overview/sql-2016-foundation-grammar.html#set-role-statement
@@ -1467,7 +1517,10 @@ pub enum Statement {
     ///
     /// Note: this is a PostgreSQL-specific statements
     /// `SET TIME ZONE <value>` is an alias for `SET timezone TO <value>` in PostgreSQL
-    SetTimeZone { local: bool, value: Expr },
+    SetTimeZone {
+        local: bool,
+        value: Expr,
+    },
     /// SET NAMES 'charset_name' [COLLATE 'collation_name']
     ///
     /// Note: this is a MySQL-specific statement.
@@ -1482,17 +1535,23 @@ pub enum Statement {
     /// SHOW FUNCTIONS
     ///
     /// Note: this is a Presto-specific statement.
-    ShowFunctions { filter: Option<ShowStatementFilter> },
+    ShowFunctions {
+        filter: Option<ShowStatementFilter>,
+    },
     /// ```sql
     /// SHOW <variable>
     /// ```
     ///
     /// Note: this is a PostgreSQL-specific statement.
-    ShowVariable { variable: Vec<Ident> },
+    ShowVariable {
+        variable: Vec<Ident>,
+    },
     /// SHOW VARIABLES
     ///
     /// Note: this is a MySQL-specific statement.
-    ShowVariables { filter: Option<ShowStatementFilter> },
+    ShowVariables {
+        filter: Option<ShowStatementFilter>,
+    },
     /// SHOW CREATE TABLE
     ///
     /// Note: this is a MySQL-specific statement.
@@ -1522,13 +1581,19 @@ pub enum Statement {
     /// SHOW COLLATION
     ///
     /// Note: this is a MySQL-specific statement.
-    ShowCollation { filter: Option<ShowStatementFilter> },
+    ShowCollation {
+        filter: Option<ShowStatementFilter>,
+    },
     /// USE
     ///
     /// Note: This is a MySQL-specific statement.
-    Use { db_name: Ident },
+    Use {
+        db_name: Ident,
+    },
     /// `{ BEGIN [ TRANSACTION | WORK ] | START TRANSACTION } ...`
-    StartTransaction { modes: Vec<TransactionMode> },
+    StartTransaction {
+        modes: Vec<TransactionMode>,
+    },
     /// `SET TRANSACTION ...`
     SetTransaction {
         modes: Vec<TransactionMode>,
@@ -1547,9 +1612,13 @@ pub enum Statement {
         if_exists: bool,
     },
     /// `COMMIT [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]`
-    Commit { chain: bool },
+    Commit {
+        chain: bool,
+    },
     /// `ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]`
-    Rollback { chain: bool },
+    Rollback {
+        chain: bool,
+    },
     /// CREATE SCHEMA
     CreateSchema {
         /// `<schema name> | AUTHORIZATION <schema authorization identifier>  | <schema name>  AUTHORIZATION <schema authorization identifier>`
@@ -1618,11 +1687,17 @@ pub enum Statement {
     /// `DEALLOCATE [ PREPARE ] { name | ALL }`
     ///
     /// Note: this is a PostgreSQL-specific statement.
-    Deallocate { name: Ident, prepare: bool },
+    Deallocate {
+        name: Ident,
+        prepare: bool,
+    },
     /// `EXECUTE name [ ( parameter [, ...] ) ]`
     ///
     /// Note: this is a PostgreSQL-specific statement.
-    Execute { name: Ident, parameters: Vec<Expr> },
+    Execute {
+        name: Ident,
+        parameters: Vec<Expr>,
+    },
     /// `PREPARE name [ ( data_type [, ...] ) ] AS statement`
     ///
     /// Note: this is a PostgreSQL-specific statement.
@@ -1663,7 +1738,9 @@ pub enum Statement {
         format: Option<AnalyzeFormat>,
     },
     /// SAVEPOINT -- define a new savepoint within the current transaction
-    Savepoint { name: Ident },
+    Savepoint {
+        name: Ident,
+    },
     // MERGE INTO statement, based on Snowflake. See <https://docs.snowflake.com/en/sql-reference/sql/merge.html>
     Merge {
         // optional INTO keyword
@@ -1730,21 +1807,8 @@ pub enum Statement {
         peer_type: PeerType,
         with_options: Vec<SqlOption>,
     },
-    /// CREATE MIRROR mirror_name FROM\
-    /// peer_1 TO peer_2
-    /// WITH TABLE MAPPING sch1.tbl1:sch2.tbl2, sch1.tbl3:sch2.tbl3
-    /// WITH (option1 = value1, option2 = value2, ...)
     CreateMirror {
-        // Name of the mirror job.
-        mirror_name: ObjectName,
-        // name of the source peer
-        source_peer: ObjectName,
-        // name of the target peer
-        target_peer: ObjectName,
-        // list of mappings from source to target tables.
-        table_mappings: Vec<TableMapping>,
-        // Options for the mirror job.
-        with_options: Vec<SqlOption>,
+        create_mirror: CreateMirror,
     },
     /// DROP MIRROR [IF EXISTS] mirror_name
     DropMirror {
@@ -2995,23 +3059,38 @@ impl fmt::Display for Statement {
             //////////////////////////////////////////
             // PeerDB Specific Statements
             //////////////////////////////////////////
-            Statement::CreateMirror {
-                mirror_name,
-                source_peer,
-                target_peer,
-                table_mappings,
-                with_options,
-            } => {
-                write!(
-                    f,
-                    "CREATE MIRROR {name} FROM {source} TO {target} WITH TABLE MAPPING ({formatted_table_mappings})",
-                    name = mirror_name,
-                    source = source_peer,
-                    target = target_peer,
-                    formatted_table_mappings = display_comma_separated(table_mappings)
-                )?;
-                if !with_options.is_empty() {
-                    write!(f, " WITH ({})", display_comma_separated(with_options))?;
+            Statement::CreateMirror { create_mirror } => {
+                match create_mirror {
+                    CreateMirror::CDC(cdc) => {
+                        write!(
+                            f,
+                            "CREATE MIRROR {mirror_name} FROM {source} TO {target} WITH TABLE MAPPING ({formatted_table_mappings})",
+                            mirror_name = cdc.mirror_name,
+                            source = cdc.source_peer,
+                            target = cdc.target_peer,
+                            formatted_table_mappings = display_comma_separated(&cdc.table_mappings)
+                        )?;
+                        if !cdc.with_options.is_empty() {
+                            write!(f, " WITH ({})", display_comma_separated(&cdc.with_options))?;
+                        }
+                    }
+                    CreateMirror::Select(select) => {
+                        write!(
+                            f,
+                            "CREATE MIRROR {mirror_name} FROM {source} TO {target} FOR $${query_string}$$",
+                            mirror_name = select.mirror_name,
+                            source = select.source_peer,
+                            target = select.target_peer,
+                            query_string = select.query_string
+                        )?;
+                        if !select.with_options.is_empty() {
+                            write!(
+                                f,
+                                " WITH ({})",
+                                display_comma_separated(&select.with_options)
+                            )?;
+                        }
+                    }
                 }
                 Ok(())
             }

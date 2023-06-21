@@ -7094,18 +7094,45 @@ impl<'a> Parser<'a> {
         self.expect_keyword(Keyword::TO)?;
         let target_peer = self.parse_object_name()?;
 
-        self.expect_keywords(&[Keyword::WITH, Keyword::TABLE, Keyword::MAPPING])?;
+        // mirror select
+        if self.parse_keyword(Keyword::FOR) {
+            let token = self.next_token();
+            match token.token {
+                Token::DollarQuotedString(ref s) => {
+                    let query_string = s.value.clone();
 
-        let table_mappings = self.parse_table_mappings()?;
-        let with_options = self.parse_options(Keyword::WITH)?;
+                    let with_options = self.parse_options(Keyword::WITH)?;
 
-        Ok(Statement::CreateMirror {
-            mirror_name,
-            source_peer,
-            target_peer,
-            table_mappings,
-            with_options,
-        })
+                    Ok(Statement::CreateMirror {
+                        create_mirror: CreateMirror::Select(CreateMirrorForSelect {
+                            mirror_name,
+                            source_peer,
+                            target_peer,
+                            query_string,
+                            with_options,
+                        }),
+                    })
+                }
+                _ => self.expected("$$[query string]$$", token),
+            }
+        } else {
+            // mirror CDC
+            self.expect_keywords(&[Keyword::WITH, Keyword::TABLE, Keyword::MAPPING])?;
+
+            let table_mappings = self.parse_table_mappings()?;
+
+            let with_options = self.parse_options(Keyword::WITH)?;
+
+            Ok(Statement::CreateMirror {
+                create_mirror: CreateMirror::CDC(CreateMirrorForCDC {
+                    mirror_name,
+                    source_peer,
+                    target_peer,
+                    table_mappings,
+                    with_options,
+                }),
+            })
+        }
     }
 
     /// The index of the first unprocessed token.
