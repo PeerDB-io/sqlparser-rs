@@ -3073,7 +3073,7 @@ impl fmt::Display for Statement {
                         if !cdc.with_options.is_empty() {
                             write!(
                                 f,
-                                " WITH OPTIONS ({})",
+                                " WITH ({})",
                                 display_comma_separated(&cdc.with_options)
                             )?;
                         }
@@ -3090,7 +3090,7 @@ impl fmt::Display for Statement {
                         if !select.with_options.is_empty() {
                             write!(
                                 f,
-                                " WITH OPTIONS ({})",
+                                " WITH ({})",
                                 display_comma_separated(&select.with_options)
                             )?;
                         }

@@ -2388,7 +2388,7 @@ impl<'a> Parser<'a> {
             if self.peek_token().token != Token::EOF {
                 if let Token::Word(word) = self.peek_token().token {
                     if word.keyword == Keyword::OPTIONS {
-                        options = self.parse_options(&[Keyword::OPTIONS])?
+                        options = self.parse_options(Keyword::OPTIONS)?
                     }
                 };
 
@@ -2421,7 +2421,7 @@ impl<'a> Parser<'a> {
                 if self.peek_token() != Token::EOF {
                     if let Token::Word(word) = self.peek_token().token {
                         if word.keyword == Keyword::OPTIONS {
-                            options = self.parse_options(&[Keyword::OPTIONS])?
+                            options = self.parse_options(Keyword::OPTIONS)?
                         }
                     };
 
@@ -2728,7 +2728,7 @@ impl<'a> Parser<'a> {
             None
         };
         let location = hive_formats.location.clone();
-        let table_properties = self.parse_options(&[Keyword::TBLPROPERTIES])?;
+        let table_properties = self.parse_options(Keyword::TBLPROPERTIES)?;
         Ok(CreateTableBuilder::new(table_name)
             .columns(columns)
             .constraints(constraints)
@@ -2780,7 +2780,7 @@ impl<'a> Parser<'a> {
         // ANSI SQL and Postgres support RECURSIVE here, but we don't support it either.
         let name = self.parse_object_name()?;
         let columns = self.parse_parenthesized_column_list(Optional, false)?;
-        let with_options = self.parse_options(&[Keyword::WITH])?;
+        let with_options = self.parse_options(Keyword::WITH)?;
 
         let cluster_by = if self.parse_keyword(Keyword::CLUSTER) {
             self.expect_keyword(Keyword::BY)?;
@@ -3373,8 +3373,8 @@ impl<'a> Parser<'a> {
         let hive_distribution = self.parse_hive_distribution()?;
         let hive_formats = self.parse_hive_formats()?;
         // PostgreSQL supports `WITH ( options )`, before `AS`
-        let with_options = self.parse_options(&[Keyword::WITH])?;
-        let table_properties = self.parse_options(&[Keyword::TBLPROPERTIES])?;
+        let with_options = self.parse_options(Keyword::WITH)?;
+        let table_properties = self.parse_options(Keyword::TBLPROPERTIES)?;
 
         let engine = if self.parse_keyword(Keyword::ENGINE) {
             self.expect_token(&Token::Eq)?;
@@ -3803,8 +3803,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_options(&mut self, keywords: &[Keyword]) -> Result<Vec<SqlOption>, ParserError> {
-        if self.parse_keywords(keywords) {
+    pub fn parse_options(&mut self, keyword: Keyword) -> Result<Vec<SqlOption>, ParserError> {
+        if self.parse_keyword(keyword) {
             self.expect_token(&Token::LParen)?;
             let options = self.parse_comma_separated(Parser::parse_sql_option)?;
             self.expect_token(&Token::RParen)?;
@@ -7076,7 +7076,7 @@ impl<'a> Parser<'a> {
             }
         }?;
 
-        let with_options = self.parse_options(&[Keyword::WITH])?;
+        let with_options = self.parse_options(Keyword::WITH)?;
         Ok(Statement::CreatePeer {
             if_not_exists,
             peer_name,
@@ -7101,7 +7101,7 @@ impl<'a> Parser<'a> {
                 Token::DollarQuotedString(ref s) => {
                     let query_string = s.value.clone();
 
-                    let with_options = self.parse_options(&[Keyword::WITH, Keyword::OPTIONS])?;
+                    let with_options = self.parse_options(Keyword::WITH)?;
 
                     Ok(Statement::CreateMirror {
                         create_mirror: CreateMirror::Select(CreateMirrorForSelect {
@@ -7121,7 +7121,7 @@ impl<'a> Parser<'a> {
 
             let table_mappings = self.parse_table_mappings()?;
 
-            let with_options = self.parse_options(&[Keyword::WITH, Keyword::OPTIONS])?;
+            let with_options = self.parse_options(Keyword::WITH)?;
 
             Ok(Statement::CreateMirror {
                 create_mirror: CreateMirror::CDC(CreateMirrorForCDC {
