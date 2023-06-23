@@ -7061,12 +7061,14 @@ impl<'a> Parser<'a> {
             Keyword::SNOWFLAKE,
             Keyword::POSTGRES,
             Keyword::KAFKA,
+            Keyword::CLOUDSTORAGE
         ]) {
             Some(Keyword::BIGQUERY) => Ok(PeerType::Bigquery),
             Some(Keyword::MONGO) => Ok(PeerType::Mongo),
             Some(Keyword::SNOWFLAKE) => Ok(PeerType::Snowflake),
             Some(Keyword::POSTGRES) => Ok(PeerType::Postgres),
             Some(Keyword::KAFKA) => Ok(PeerType::Kafka),
+            Some(Keyword::CLOUDSTORAGE) => Ok(PeerType::CloudStorage),
             other => {
                 let err = format!(
                     "expected peertype of POSTGRES,SNOWFLAKE,BIGQUERY,MONGO or KAFKA, got {:#?}",

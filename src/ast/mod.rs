@@ -1827,6 +1827,7 @@ pub enum PeerType {
     Snowflake,
     Postgres,
     Kafka,
+    CloudStorage
 }
 
 impl fmt::Display for PeerType {
@@ -1837,6 +1838,7 @@ impl fmt::Display for PeerType {
             PeerType::Snowflake => write!(f, "SNOWFLAKE"),
             PeerType::Postgres => write!(f, "POSTGRES"),
             PeerType::Kafka => write!(f, "KAFKA"),
+            PeerType::CloudStorage => write!(f, "CLOUDSTORAGE"),
         }
     }
 }

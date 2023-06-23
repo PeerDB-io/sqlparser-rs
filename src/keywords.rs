@@ -140,6 +140,7 @@ define_keywords!(
     CLOB,
     CLONE,
     CLOSE,
+    CLOUDSTORAGE,
     CLUSTER,
     COALESCE,
     COLLATE,
