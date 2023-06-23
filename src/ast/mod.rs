@@ -1412,6 +1412,10 @@ pub enum Statement {
         /// than empty (represented as ()), the latter meaning "no sorting".
         /// <https://clickhouse.com/docs/en/sql-reference/statements/create/table/>
         order_by: Option<Vec<Ident>>,
+        /// SQLite "STRICT" clause.
+        /// if the "STRICT" table-option keyword is added to the end, after the closing ")",
+        /// then strict typing rules apply to that table.
+        strict: bool,
     },
     /// SQLite's `CREATE VIRTUAL TABLE .. USING <module_name> (<module_args>)`
     CreateVirtualTable {
@@ -2409,6 +2413,7 @@ impl fmt::Display for Statement {
                 on_commit,
                 on_cluster,
                 order_by,
+                strict,
             } => {
                 // We want to allow the following options
                 // Empty column list, allowed by PostgreSQL:
@@ -2577,7 +2582,9 @@ impl fmt::Display for Statement {
                     };
                     write!(f, " {on_commit}")?;
                 }
-
+                if *strict {
+                    write!(f, " STRICT")?;
+                }
                 Ok(())
             }
             Statement::CreateVirtualTable {
