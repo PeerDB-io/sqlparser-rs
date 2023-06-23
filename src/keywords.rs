@@ -563,6 +563,7 @@ define_keywords!(
     STDOUT,
     STORAGE_INTEGRATION,
     STORED,
+    STRICT,
     STRING,
     SUBMULTISET,
     SUBSTRING,

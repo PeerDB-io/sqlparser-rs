@@ -3521,6 +3521,7 @@ impl<'a> Parser<'a> {
                 None
             };
 
+        let strict = self.parse_keyword(Keyword::STRICT);
         Ok(CreateTableBuilder::new(table_name)
             .temporary(temporary)
             .columns(columns)
@@ -3543,6 +3544,7 @@ impl<'a> Parser<'a> {
             .collation(collation)
             .on_commit(on_commit)
             .on_cluster(on_cluster)
+            .strict(strict)
             .build())
     }
 
