@@ -1666,6 +1666,9 @@ impl<'a> Parser<'a> {
             Token::Sharp if dialect_of!(self is PostgreSqlDialect) => {
                 Some(BinaryOperator::PGBitwiseXor)
             }
+            Token::Overlap if dialect_of!(self is PostgreSqlDialect | GenericDialect) => {
+                Some(BinaryOperator::PGOverlap)
+            }
             Token::Tilde => Some(BinaryOperator::PGRegexMatch),
             Token::TildeAsterisk => Some(BinaryOperator::PGRegexIMatch),
             Token::ExclamationMarkTilde => Some(BinaryOperator::PGRegexNotMatch),
@@ -2054,6 +2057,7 @@ impl<'a> Parser<'a> {
             Token::LBracket
             | Token::LongArrow
             | Token::Arrow
+            | Token::Overlap
             | Token::HashArrow
             | Token::HashLongArrow
             | Token::AtArrow
