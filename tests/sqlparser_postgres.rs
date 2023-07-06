@@ -1614,6 +1614,7 @@ fn parse_pg_binary_ops() {
         ("^", BinaryOperator::PGExp, pg()),
         (">>", BinaryOperator::PGBitwiseShiftRight, pg_and_generic()),
         ("<<", BinaryOperator::PGBitwiseShiftLeft, pg_and_generic()),
+        ("&&", BinaryOperator::PGOverlap, pg()),
     ];
 
     for (str_op, op, dialects) in binary_ops {
