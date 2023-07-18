@@ -114,7 +114,10 @@ impl fmt::Display for SetExpr {
             } => {
                 write!(f, "{left} {op}")?;
                 match set_quantifier {
-                    SetQuantifier::All | SetQuantifier::Distinct => write!(f, " {set_quantifier}")?,
+                    SetQuantifier::All
+                    | SetQuantifier::Distinct
+                    | SetQuantifier::ByName
+                    | SetQuantifier::AllByName => write!(f, " {set_quantifier}")?,
                     SetQuantifier::None => write!(f, "{set_quantifier}")?,
                 }
                 write!(f, " {right}")?;
@@ -152,6 +155,8 @@ impl fmt::Display for SetOperator {
 pub enum SetQuantifier {
     All,
     Distinct,
+    ByName,
+    AllByName,
     None,
 }
 
@@ -160,6 +165,8 @@ impl fmt::Display for SetQuantifier {
         match self {
             SetQuantifier::All => write!(f, "ALL"),
             SetQuantifier::Distinct => write!(f, "DISTINCT"),
+            SetQuantifier::ByName => write!(f, "BY NAME"),
+            SetQuantifier::AllByName => write!(f, "ALL BY NAME"),
             SetQuantifier::None => write!(f, ""),
         }
     }
