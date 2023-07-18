@@ -391,6 +391,7 @@ define_keywords!(
     MSCK,
     MULTISET,
     MUTATION,
+    NAME,
     NANOSECOND,
     NANOSECONDS,
     NATIONAL,
