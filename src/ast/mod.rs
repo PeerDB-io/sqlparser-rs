@@ -1826,6 +1826,9 @@ pub enum PeerType {
     Mongo,
     Snowflake,
     Postgres,
+    EventHub,
+    S3,
+    SQLServer,
     Kafka,
 }
 
@@ -1836,6 +1839,9 @@ impl fmt::Display for PeerType {
             PeerType::Mongo => write!(f, "MONGO"),
             PeerType::Snowflake => write!(f, "SNOWFLAKE"),
             PeerType::Postgres => write!(f, "POSTGRES"),
+            PeerType::EventHub => write!(f, "EVENTHUB"),
+            PeerType::S3 => write!(f, "S3"),
+            PeerType::SQLServer => write!(f, "SQLSERVER"),
             PeerType::Kafka => write!(f, "KAFKA"),
         }
     }
