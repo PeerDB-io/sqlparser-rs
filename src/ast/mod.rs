@@ -1816,6 +1816,10 @@ pub enum Statement {
         if_exists: bool,
         mirror_name: ObjectName,
     },
+    // EXECUTE MIRROR mirror_name
+    ExecuteMirror {
+        mirror_name: Ident,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -3125,6 +3129,10 @@ impl fmt::Display for Statement {
                     "DROP MIRROR {if_exists}{mirror_name}",
                     if_exists = if *if_exists { "IF EXISTS " } else { "" },
                 )?;
+                Ok(())
+            }
+            Statement::ExecuteMirror { mirror_name } => {
+                write!(f, "EXECUTE MIRROR {mirror_name}", mirror_name = mirror_name)?;
                 Ok(())
             }
         }
