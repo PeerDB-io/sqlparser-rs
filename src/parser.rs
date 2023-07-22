@@ -6817,6 +6817,11 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_execute(&mut self) -> Result<Statement, ParserError> {
+        if self.parse_keyword(Keyword::MIRROR) {
+            let mirror_name = self.parse_identifier()?;
+            return Ok(Statement::ExecuteMirror { mirror_name });
+        }
+
         let name = self.parse_identifier()?;
 
         let mut parameters = vec![];
