@@ -1651,9 +1651,14 @@ pub enum Statement {
     Use {
         db_name: Ident,
     },
-    /// `{ BEGIN [ TRANSACTION | WORK ] | START TRANSACTION } ...`
+    /// `START  [ TRANSACTION | WORK ] | START TRANSACTION } ...`
+    /// If `begin` is false.
+    ///
+    /// `BEGIN  [ TRANSACTION | WORK ] | START TRANSACTION } ...`
+    /// If `begin` is true
     StartTransaction {
         modes: Vec<TransactionMode>,
+        begin: bool,
     },
     /// `SET TRANSACTION ...`
     SetTransaction {
@@ -2910,8 +2915,15 @@ impl fmt::Display for Statement {
                 }
                 Ok(())
             }
-            Statement::StartTransaction { modes } => {
-                write!(f, "START TRANSACTION")?;
+            Statement::StartTransaction {
+                modes,
+                begin: syntax_begin,
+            } => {
+                if *syntax_begin {
+                    write!(f, "BEGIN TRANSACTION")?;
+                } else {
+                    write!(f, "START TRANSACTION")?;
+                }
                 if !modes.is_empty() {
                     write!(f, " {}", display_comma_separated(modes))?;
                 }
