@@ -6952,6 +6952,7 @@ impl<'a> Parser<'a> {
         self.expect_keyword(Keyword::TRANSACTION)?;
         Ok(Statement::StartTransaction {
             modes: self.parse_transaction_modes()?,
+            begin: false,
         })
     }
 
@@ -6959,6 +6960,7 @@ impl<'a> Parser<'a> {
         let _ = self.parse_one_of_keywords(&[Keyword::TRANSACTION, Keyword::WORK]);
         Ok(Statement::StartTransaction {
             modes: self.parse_transaction_modes()?,
+            begin: true,
         })
     }
 
