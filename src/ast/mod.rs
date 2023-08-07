@@ -1497,6 +1497,8 @@ pub enum Statement {
         /// Hive allows you specify whether the table's stored data will be
         /// deleted along with the dropped table
         purge: bool,
+        /// MySQL-specific "TEMPORARY" keyword
+        temporary: bool,
     },
     /// DROP Function
     DropFunction {
@@ -2760,9 +2762,11 @@ impl fmt::Display for Statement {
                 cascade,
                 restrict,
                 purge,
+                temporary,
             } => write!(
                 f,
-                "DROP {}{} {}{}{}{}",
+                "DROP {}{}{} {}{}{}{}",
+                if *temporary { "TEMPORARY " } else { "" },
                 object_type,
                 if *if_exists { " IF EXISTS" } else { "" },
                 display_comma_separated(names),
