@@ -702,8 +702,8 @@ fn parse_escaped_string_with_no_escape() {
             _ => unreachable!(),
         };
     }
-    let sql = r#"SELECT 'I\'m fine'"#;
-    assert_mysql_query_value(sql, r#"I\'m fine"#);
+    let sql = r"SELECT 'I\'m fine'";
+    assert_mysql_query_value(sql, r"I\'m fine");
 
     let sql = r#"SELECT 'I''m fine'"#;
     assert_mysql_query_value(sql, r#"I''m fine"#);
@@ -711,8 +711,8 @@ fn parse_escaped_string_with_no_escape() {
     let sql = r#"SELECT 'I\"m fine'"#;
     assert_mysql_query_value(sql, r#"I\"m fine"#);
 
-    let sql = r#"SELECT 'Testing: \0 \\ \% \_ \b \n \r \t \Z \a \ '"#;
-    assert_mysql_query_value(sql, r#"Testing: \0 \\ \% \_ \b \n \r \t \Z \a \ "#);
+    let sql = r"SELECT 'Testing: \0 \\ \% \_ \b \n \r \t \Z \a \ '";
+    assert_mysql_query_value(sql, r"Testing: \0 \\ \% \_ \b \n \r \t \Z \a \ ");
 }
 
 #[test]
@@ -723,7 +723,7 @@ fn check_roundtrip_of_escaped_string() {
         dialects: vec![Box::new(MySqlDialect {})],
         options: options.clone(),
     }
-    .verified_stmt(r#"SELECT 'I\'m fine'"#);
+    .verified_stmt(r"SELECT 'I\'m fine'");
     TestedDialects {
         dialects: vec![Box::new(MySqlDialect {})],
         options: options.clone(),
@@ -733,12 +733,12 @@ fn check_roundtrip_of_escaped_string() {
         dialects: vec![Box::new(MySqlDialect {})],
         options: options.clone(),
     }
-    .verified_stmt(r#"SELECT 'I\\\'m fine'"#);
+    .verified_stmt(r"SELECT 'I\\\'m fine'");
     TestedDialects {
         dialects: vec![Box::new(MySqlDialect {})],
         options: options.clone(),
     }
-    .verified_stmt(r#"SELECT 'I\\\'m fine'"#);
+    .verified_stmt(r"SELECT 'I\\\'m fine'");
 
     TestedDialects {
         dialects: vec![Box::new(MySqlDialect {})],
