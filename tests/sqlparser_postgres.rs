@@ -3030,8 +3030,7 @@ fn parse_create_multi_mirror() {
 }
 
 #[test]
-fn parse_drop_mirror
-() {
+fn parse_drop_mirror() {
     match pg().verified_stmt("DROP MIRROR IF EXISTS m1") {
          Statement::DropMirror
           { if_exists, mirror_name} => {
