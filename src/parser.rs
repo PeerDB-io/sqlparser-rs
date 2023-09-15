@@ -5625,7 +5625,7 @@ impl<'a> Parser<'a> {
             Some(_) => {
                 let db_name = vec![self.parse_identifier()?];
                 let ObjectName(table_name) = object_name;
-                let object_name = db_name.into_iter().chain(table_name.into_iter()).collect();
+                let object_name = db_name.into_iter().chain(table_name).collect();
                 ObjectName(object_name)
             }
             None => object_name,
