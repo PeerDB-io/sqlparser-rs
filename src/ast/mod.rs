@@ -1808,6 +1808,8 @@ pub enum Statement {
         with_options: Vec<SqlOption>,
     },
     CreateMirror {
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        if_not_exists: bool,
         create_mirror: CreateMirror,
     },
     /// DROP MIRROR [IF EXISTS] mirror_name
@@ -3069,12 +3071,16 @@ impl fmt::Display for Statement {
             //////////////////////////////////////////
             // PeerDB Specific Statements
             //////////////////////////////////////////
-            Statement::CreateMirror { create_mirror } => {
+            Statement::CreateMirror {
+                if_not_exists,
+                create_mirror,
+            } => {
                 match create_mirror {
                     CreateMirror::CDC(cdc) => {
                         write!(
                             f,
-                            "CREATE MIRROR {mirror_name} FROM {source} TO {target} WITH TABLE MAPPING ({formatted_table_mappings})",
+                            "CREATE MIRROR {not_exists_clause}{mirror_name} FROM {source} TO {target} WITH TABLE MAPPING ({formatted_table_mappings})",
+                            not_exists_clause = if *if_not_exists { "IF NOT EXISTS " } else { "" },
                             mirror_name = cdc.mirror_name,
                             source = cdc.source_peer,
                             target = cdc.target_peer,
@@ -3087,7 +3093,8 @@ impl fmt::Display for Statement {
                     CreateMirror::Select(select) => {
                         write!(
                             f,
-                            "CREATE MIRROR {mirror_name} FROM {source} TO {target} FOR $${query_string}$$",
+                            "CREATE MIRROR {not_exists_clause}{mirror_name} FROM {source} TO {target} FOR $${query_string}$$",
+                            not_exists_clause = if *if_not_exists { "IF NOT EXISTS " } else { "" },
                             mirror_name = select.mirror_name,
                             source = select.source_peer,
                             target = select.target_peer,

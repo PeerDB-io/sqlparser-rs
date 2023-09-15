@@ -7097,6 +7097,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_create_mirror(&mut self) -> Result<Statement, ParserError> {
+        let if_not_exists = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let mirror_name = self.parse_object_name()?;
 
         self.expect_keyword(Keyword::FROM)?;
@@ -7115,6 +7116,7 @@ impl<'a> Parser<'a> {
                     let with_options = self.parse_options(Keyword::WITH)?;
 
                     Ok(Statement::CreateMirror {
+                        if_not_exists,
                         create_mirror: CreateMirror::Select(CreateMirrorForSelect {
                             mirror_name,
                             source_peer,
@@ -7135,6 +7137,7 @@ impl<'a> Parser<'a> {
             let with_options = self.parse_options(Keyword::WITH)?;
 
             Ok(Statement::CreateMirror {
+                if_not_exists,
                 create_mirror: CreateMirror::CDC(CreateMirrorForCDC {
                     mirror_name,
                     source_peer,

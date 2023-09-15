@@ -2967,6 +2967,7 @@ fn parse_create_single_mirror_no_options() {
         .verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2)")
     {
         Statement::CreateMirror {
+            if_not_exists: _,
             create_mirror: CDC(cdc),
         } => {
             assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
@@ -2989,8 +2990,9 @@ fn parse_create_single_mirror_no_options() {
 
 #[test]
 fn parse_create_single_mirror() {
-    match pg().verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2) WITH (key1 = 'value1')") {
-         Statement::CreateMirror { create_mirror: CDC(cdc) } => {
+    match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2) WITH (key1 = 'value1')") {
+         Statement::CreateMirror { if_not_exists,create_mirror: CDC(cdc) } => {
+            assert_eq!(if_not_exists, true);
             assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
             assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
             assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
@@ -3008,7 +3010,8 @@ fn parse_create_single_mirror() {
 #[test]
 fn parse_create_multi_mirror() {
     match pg().verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2, s1.t3:s2.t4) WITH (key1 = 'value1', key2 = 'value2')") {
-         Statement::CreateMirror { create_mirror: CDC(cdc) } => {
+         Statement::CreateMirror { if_not_exists,create_mirror: CDC(cdc) } => {
+            assert_eq!(if_not_exists, false);
             assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
             assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
             assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
@@ -3029,8 +3032,9 @@ fn parse_create_multi_mirror() {
 
 #[test]
 fn parse_mirror_for_select() {
-    match pg().verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 FOR $$SELECT 1$$ WITH (key1 = 'value1', key2 = 'value2')") {
-         Statement::CreateMirror { create_mirror: MirrorSelect(select) } => {
+    match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 FOR $$SELECT 1$$ WITH (key1 = 'value1', key2 = 'value2')") {
+         Statement::CreateMirror { if_not_exists,create_mirror: MirrorSelect(select) } => {
+            assert_eq!(if_not_exists, true);
             assert_eq!(select.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
             assert_eq!(select.source_peer, ObjectName(vec![Ident::new("p1")]));
             assert_eq!(select.target_peer, ObjectName(vec![Ident::new("p2")]));
