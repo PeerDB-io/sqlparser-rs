@@ -3030,6 +3030,19 @@ fn parse_create_multi_mirror() {
 }
 
 #[test]
+fn parse_drop_mirror
+() {
+    match pg().verified_stmt("DROP MIRROR IF EXISTS m1") {
+         Statement::DropMirror
+          { if_exists, mirror_name} => {
+            assert!(if_exists);
+            assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
+        },
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_mirror_for_select() {
     match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 FOR $$SELECT 1$$ WITH (key1 = 'value1', key2 = 'value2')") {
          Statement::CreateMirror { if_not_exists,create_mirror: MirrorSelect(select) } => {
