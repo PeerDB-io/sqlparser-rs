@@ -3032,8 +3032,7 @@ fn parse_create_multi_mirror() {
 #[test]
 fn parse_drop_mirror() {
     match pg().verified_stmt("DROP MIRROR IF EXISTS m1") {
-         Statement::DropMirror
-          { if_exists, mirror_name} => {
+         Statement::DropMirror { if_exists, mirror_name} => {
             assert!(if_exists);
             assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
         },
