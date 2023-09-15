@@ -509,11 +509,11 @@ fn parse_quote_identifiers_3() {
 
 #[test]
 fn parse_unterminated_escape() {
-    let sql = r#"SELECT 'I\'m not fine\'"#;
+    let sql = r"SELECT 'I\'m not fine\'";
     let result = std::panic::catch_unwind(|| mysql().one_statement_parses_to(sql, ""));
     assert!(result.is_err());
 
-    let sql = r#"SELECT 'I\\'m not fine'"#;
+    let sql = r"SELECT 'I\\'m not fine'";
     let result = std::panic::catch_unwind(|| mysql().one_statement_parses_to(sql, ""));
     assert!(result.is_err());
 }
@@ -537,16 +537,16 @@ fn parse_escaped_string() {
             _ => unreachable!(),
         };
     }
-    let sql = r#"SELECT 'I\'m fine'"#;
+    let sql = r"SELECT 'I\'m fine'";
     assert_mysql_query_value(sql, "I'm fine");
 
-    let sql = r#"SELECT 'I''m fine'"#;
+    let sql = r"SELECT 'I''m fine'";
     assert_mysql_query_value(sql, "I'm fine");
 
     let sql = r#"SELECT 'I\"m fine'"#;
     assert_mysql_query_value(sql, "I\"m fine");
 
-    let sql = r#"SELECT 'Testing: \0 \\ \% \_ \b \n \r \t \Z \a \ '"#;
+    let sql = r"SELECT 'Testing: \0 \\ \% \_ \b \n \r \t \Z \a \ '";
     assert_mysql_query_value(sql, "Testing: \0 \\ % _ \u{8} \n \r \t \u{1a} a  ");
 }
 
