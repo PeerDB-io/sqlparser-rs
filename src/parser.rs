@@ -7146,11 +7146,12 @@ impl<'a> Parser<'a> {
         } else {
             // mirror CDC
             self.expect_keyword(Keyword::WITH)?;
-            let mapping_type = match self.expect_one_of_keywords(&[Keyword::TABLE, Keyword::SCHEMA])? {
-                Keyword::TABLE => MappingType::Table,
-                Keyword::SCHEMA => MappingType::Schema,
-                _ => unreachable!()
-            };
+            let mapping_type =
+                match self.expect_one_of_keywords(&[Keyword::TABLE, Keyword::SCHEMA])? {
+                    Keyword::TABLE => MappingType::Table,
+                    Keyword::SCHEMA => MappingType::Schema,
+                    _ => unreachable!(),
+                };
             self.expect_keyword(Keyword::MAPPING)?;
 
             let mappings = self.parse_mappings()?;
@@ -7165,7 +7166,7 @@ impl<'a> Parser<'a> {
                     target_peer,
                     mappings,
                     with_options,
-                    mapping_type
+                    mapping_type,
                 }),
             })
         }
