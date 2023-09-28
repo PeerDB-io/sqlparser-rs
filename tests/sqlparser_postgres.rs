@@ -2988,6 +2988,30 @@ fn parse_create_single_mirror_no_options() {
 }
 
 #[test]
+fn parse_create_eventhub_group_peer() {
+    match pg()
+        .verified_stmt("CREATE PEER eventhub_group_1 FROM EVENTHUBGROUP WITH (customer_1 = true)")
+    {
+        Statement::CreatePeer {
+            if_not_exists: _,
+            peer_name: _,
+            peer_type,
+            with_options,
+        } => {
+            assert_eq!(peer_type, PeerType::EventHubGroup);
+            assert_eq!(
+                with_options,
+                vec![SqlOption {
+                    name: Ident::new("customer_1"),
+                    value: sqlparser::ast::Value::Boolean(true)
+                }]
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_create_single_mirror() {
     match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2) WITH (key1 = 'value1')") {
          Statement::CreateMirror { if_not_exists,create_mirror: CDC(cdc) } => {

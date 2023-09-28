@@ -7069,6 +7069,7 @@ impl<'a> Parser<'a> {
             Keyword::S3,
             Keyword::SQLSERVER,
             Keyword::EVENTHUB,
+            Keyword::EVENTHUBGROUP,
         ]) {
             Some(Keyword::BIGQUERY) => Ok(PeerType::Bigquery),
             Some(Keyword::MONGO) => Ok(PeerType::Mongo),
@@ -7078,9 +7079,22 @@ impl<'a> Parser<'a> {
             Some(Keyword::S3) => Ok(PeerType::S3),
             Some(Keyword::EVENTHUB) => Ok(PeerType::EventHub),
             Some(Keyword::SQLSERVER) => Ok(PeerType::SQLServer),
+            Some(Keyword::EVENTHUBGROUP) => Ok(PeerType::EventHubGroup),
             other => {
+                let supported_peer_types = [
+                    "BIGQUERY",
+                    "MONGO",
+                    "SNOWFLAKE",
+                    "POSTGRES",
+                    "KAFKA",
+                    "S3",
+                    "SQLSERVER",
+                    "EVENTHUB",
+                    "EVENTHUBGROUP",
+                ];
                 let err = format!(
-                    "expected peertype of POSTGRES,SNOWFLAKE,BIGQUERY,MONGO,S3,SQLSERVER,EVENTHUB or KAFKA, got {:#?}",
+                    "expected peertype as one of {}, got {:#?}",
+                    supported_peer_types.join(", "),
                     other
                 );
                 Err(ParserError::ParserError(err))
@@ -7088,6 +7102,7 @@ impl<'a> Parser<'a> {
         }?;
 
         let with_options = self.parse_options(Keyword::WITH)?;
+
         Ok(Statement::CreatePeer {
             if_not_exists,
             peer_name,

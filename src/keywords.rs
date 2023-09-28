@@ -238,6 +238,7 @@ define_keywords!(
     ESCAPE,
     EVENT,
     EVENTHUB,
+    EVENTHUBGROUP,
     EVERY,
     EXCEPT,
     EXCLUDE,
