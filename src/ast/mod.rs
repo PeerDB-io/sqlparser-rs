@@ -1134,9 +1134,22 @@ pub enum Password {
     NullPassword,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum MappingType {
+    Table,
+    Schema,
+}
+
 /// CREATE MIRROR mirror_name FROM
 /// peer_1 TO peer_2
-/// WITH TABLE MAPPING sch1.tbl1:sch2.tbl2, sch1.tbl3:sch2.tbl3
+/// WITH TABLE MAPPING (sch1.tbl1:sch2.tbl2, sch1.tbl3:sch2.tbl3)
+/// WITH OPTIONS (option1 = value1, option2 = value2, ...)
+/// as well as
+/// CREATE MIRROR mirror_name FROM
+/// peer_1 TO peer_2
+/// WITH SCHEMA MAPPING (sch1:sch2)
 /// WITH OPTIONS (option1 = value1, option2 = value2, ...)
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -1149,9 +1162,11 @@ pub struct CreateMirrorForCDC {
     // name of the target peer
     pub target_peer: ObjectName,
     // list of mappings from source to target tables.
-    pub table_mappings: Vec<TableMapping>,
+    pub mappings: Vec<Mapping>,
     // Options for the mirror job.
     pub with_options: Vec<SqlOption>,
+    // mapping type: currently either SCHEMA or TABLE
+    pub mapping_type: MappingType,
 }
 
 /// CREATE MIRROR mirror_name
@@ -3081,12 +3096,13 @@ impl fmt::Display for Statement {
                     CreateMirror::CDC(cdc) => {
                         write!(
                             f,
-                            "CREATE MIRROR {not_exists_clause}{mirror_name} FROM {source} TO {target} WITH TABLE MAPPING ({formatted_table_mappings})",
+                            "CREATE MIRROR {not_exists_clause}{mirror_name} FROM {source} TO {target} WITH {mapping_type} MAPPING ({formatted_table_mappings})",
                             not_exists_clause = if *if_not_exists { "IF NOT EXISTS " } else { "" },
                             mirror_name = cdc.mirror_name,
                             source = cdc.source_peer,
                             target = cdc.target_peer,
-                            formatted_table_mappings = display_comma_separated(&cdc.table_mappings)
+                            formatted_table_mappings = display_comma_separated(&cdc.mappings),
+                            mapping_type = if cdc.mapping_type == MappingType::Table { "TABLE" } else { "SCHEMA" }
                         )?;
                         if !cdc.with_options.is_empty() {
                             write!(f, " WITH ({})", display_comma_separated(&cdc.with_options))?;
@@ -4596,19 +4612,19 @@ impl fmt::Display for SearchModifier {
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
-pub struct TableMapping {
+pub struct Mapping {
     /// The value of the source table identifier without quotes.
     pub source_table_identifier: ObjectName,
     /// The value of the destination table identifier without quotes.
-    pub target_table_identifier: ObjectName,
+    pub target_identifier: ObjectName,
 }
 
-impl fmt::Display for TableMapping {
+impl fmt::Display for Mapping {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}:{}",
-            self.source_table_identifier, self.target_table_identifier
+            self.source_table_identifier, self.target_identifier
         )
     }
 }

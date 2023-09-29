@@ -3814,9 +3814,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_table_mappings(&mut self) -> Result<Vec<TableMapping>, ParserError> {
+    fn parse_mappings(&mut self) -> Result<Vec<Mapping>, ParserError> {
         self.expect_token(&Token::LParen)?;
-        let table_mappings = self.parse_comma_separated(Parser::parse_table_mapping)?;
+        let table_mappings = self.parse_comma_separated(Parser::parse_mapping)?;
         self.expect_token(&Token::RParen)?;
         Ok(table_mappings)
     }
@@ -7145,9 +7145,16 @@ impl<'a> Parser<'a> {
             }
         } else {
             // mirror CDC
-            self.expect_keywords(&[Keyword::WITH, Keyword::TABLE, Keyword::MAPPING])?;
+            self.expect_keyword(Keyword::WITH)?;
+            let mapping_type =
+                match self.expect_one_of_keywords(&[Keyword::TABLE, Keyword::SCHEMA])? {
+                    Keyword::TABLE => MappingType::Table,
+                    Keyword::SCHEMA => MappingType::Schema,
+                    _ => unreachable!(),
+                };
+            self.expect_keyword(Keyword::MAPPING)?;
 
-            let table_mappings = self.parse_table_mappings()?;
+            let mappings = self.parse_mappings()?;
 
             let with_options = self.parse_options(Keyword::WITH)?;
 
@@ -7157,8 +7164,9 @@ impl<'a> Parser<'a> {
                     mirror_name,
                     source_peer,
                     target_peer,
-                    table_mappings,
+                    mappings,
                     with_options,
+                    mapping_type,
                 }),
             })
         }
@@ -7242,13 +7250,13 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_table_mapping(&mut self) -> Result<TableMapping, ParserError> {
+    fn parse_mapping(&mut self) -> Result<Mapping, ParserError> {
         let source_table_identifier = self.parse_object_name()?;
         self.expect_token(&Token::Colon)?;
         let destination_table_identifier = self.parse_object_name()?;
-        Ok(TableMapping {
+        Ok(Mapping {
             source_table_identifier,
-            target_table_identifier: destination_table_identifier,
+            target_identifier: destination_table_identifier,
         })
     }
 }
