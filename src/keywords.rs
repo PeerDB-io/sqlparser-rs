@@ -111,6 +111,7 @@ define_keywords!(
     BIGNUMERIC,
     BIGQUERY,
     BINARY,
+    BINDING,
     BLOB,
     BLOOMFILTER,
     BOOL,
