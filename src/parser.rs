@@ -4388,7 +4388,7 @@ impl<'a> Parser<'a> {
     pub fn parse_literal_string(&mut self) -> Result<String, ParserError> {
         let next_token = self.next_token();
         match next_token.token {
-            Token::Word(Word { value, keyword, .. }) if keyword == Keyword::NoKeyword => Ok(value),
+            Token::Word(Word { value, keyword: Keyword::NoKeyword, .. }) => Ok(value),
             Token::SingleQuotedString(s) => Ok(s),
             Token::DoubleQuotedString(s) => Ok(s),
             Token::EscapedStringLiteral(s) if dialect_of!(self is PostgreSqlDialect | GenericDialect) => {
@@ -5460,8 +5460,8 @@ impl<'a> Parser<'a> {
             self.expect_token(&Token::Colon)?;
         } else if self.parse_keyword(Keyword::ROLE) {
             let context_modifier = match modifier {
-                Some(keyword) if keyword == Keyword::LOCAL => ContextModifier::Local,
-                Some(keyword) if keyword == Keyword::SESSION => ContextModifier::Session,
+                Some(Keyword::LOCAL) => ContextModifier::Local,
+                Some(Keyword::SESSION) => ContextModifier::Session,
                 _ => ContextModifier::None,
             };
 
