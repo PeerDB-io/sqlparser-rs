@@ -6456,7 +6456,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse an [`WildcardAdditionalOptions`](WildcardAdditionalOptions) information for wildcard select items.
+    /// Parse an [`WildcardAdditionalOptions`] information for wildcard select items.
     ///
     /// If it is not possible to parse it, will return an option.
     pub fn parse_wildcard_additional_options(
