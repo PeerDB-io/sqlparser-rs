@@ -2962,9 +2962,12 @@ fn parse_select_group_by_cube() {
 
 #[test]
 fn parse_create_single_mirror_no_options() {
-    match pg()
-        .verified_stmt("CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING (s1.t1:s2.t2)")
-    {
+    let mapping = "({from : s1.t1, to : s2.t2})";
+    let sql = format!(
+        "CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING {}",
+        mapping
+    );
+    match pg().verified_stmt(&sql) {
         Statement::CreateMirror {
             if_not_exists: _,
             create_mirror: CDC(cdc),
