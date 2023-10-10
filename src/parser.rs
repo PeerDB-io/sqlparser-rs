@@ -3814,7 +3814,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_mappings(&mut self) -> Result<Vec<Mapping>, ParserError> {
+    fn parse_mapping_options(&mut self) -> Result<Vec<MappingOptions>, ParserError> {
         self.expect_token(&Token::LParen)?;
         let table_mappings = self.parse_comma_separated(Parser::parse_mapping)?;
         self.expect_token(&Token::RParen)?;
@@ -7158,7 +7158,7 @@ impl<'a> Parser<'a> {
                 };
             self.expect_keyword(Keyword::MAPPING)?;
 
-            let mappings = self.parse_mappings()?;
+            let mapping_options = self.parse_mapping_options()?;
 
             let with_options = self.parse_options(Keyword::WITH)?;
 
@@ -7168,7 +7168,7 @@ impl<'a> Parser<'a> {
                     mirror_name,
                     source_peer,
                     target_peer,
-                    mappings,
+                    mapping_options,
                     with_options,
                     mapping_type,
                 }),
@@ -7254,13 +7254,33 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_mapping(&mut self) -> Result<Mapping, ParserError> {
+    fn parse_mapping(&mut self) -> Result<MappingOptions, ParserError> {
+        self.expect_token(&Token::LBrace)?;
+
+        self.expect_keyword(Keyword::FROM)?;
+        self.expect_token(&Token::Colon)?;
         let source_table_identifier = self.parse_object_name()?;
+        self.expect_token(&Token::Comma)?;
+
+        self.expect_keyword(Keyword::TO)?;
         self.expect_token(&Token::Colon)?;
         let destination_table_identifier = self.parse_object_name()?;
-        Ok(Mapping {
-            source_table_identifier,
-            target_identifier: destination_table_identifier,
+
+        let has_part_key = self.consume_token(&Token::Comma);
+        let partition_key = if has_part_key {
+            self.expect_keyword(Keyword::KEY)?;
+            self.expect_token(&Token::Colon)?;
+            Some(self.parse_identifier()?)
+        } else {
+            None
+        };
+
+        self.expect_token(&Token::RBrace)?;
+
+        Ok(MappingOptions {
+            source: source_table_identifier,
+            destination: destination_table_identifier,
+            partition_key,
         })
     }
 }
