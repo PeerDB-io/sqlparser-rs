@@ -3088,6 +3088,59 @@ fn parse_create_multi_mirror() {
 }
 
 #[test]
+fn parse_create_multi_mirror_v1() {
+    let mapping_old = "(s1.t1:s2.t2, s1.t3:s2.t4)";
+    let sql = format!(
+        "CREATE MIRROR test_mirror FROM p1 TO p2 WITH TABLE MAPPING {} WITH (key1 = 'value1', key2 = 'value2')",
+        mapping_old
+    );
+
+    let parsed_stmt = pg().parse_sql_statements(&sql).unwrap();
+
+    match parsed_stmt[0].clone() {
+        Statement::CreateMirror {
+            if_not_exists,
+            create_mirror: CDC(cdc),
+        } => {
+            assert!(!if_not_exists);
+            assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
+            assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
+            assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
+            assert_eq!(cdc.mapping_options.len(), 2);
+            assert_eq!(
+                cdc.mapping_options[0].source,
+                ObjectName(vec![Ident::new("s1"), Ident::new("t1")])
+            );
+            assert_eq!(
+                cdc.mapping_options[0].destination,
+                ObjectName(vec![Ident::new("s2"), Ident::new("t2")])
+            );
+            assert_eq!(
+                cdc.mapping_options[1].source,
+                ObjectName(vec![Ident::new("s1"), Ident::new("t3")])
+            );
+            assert_eq!(
+                cdc.mapping_options[1].destination,
+                ObjectName(vec![Ident::new("s2"), Ident::new("t4")])
+            );
+            assert_eq!(cdc.with_options.len(), 2);
+            assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
+            assert_eq!(
+                cdc.with_options[0].value,
+                Value::SingleQuotedString("value1".into())
+            );
+            assert_eq!(cdc.with_options[1].name, Ident::new("key2"));
+            assert_eq!(
+                cdc.with_options[1].value,
+                Value::SingleQuotedString("value2".into())
+            );
+            assert_eq!(cdc.mapping_type, MappingType::Table);
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_create_mirror_with_schema() {
     let mapping = "({from : s1, to : s2})";
     let sql = format!(

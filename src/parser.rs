@@ -7255,7 +7255,19 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_mapping(&mut self) -> Result<MappingOptions, ParserError> {
-        self.expect_token(&Token::LBrace)?;
+        let format_v2 = self.consume_token(&Token::LBrace);
+
+        if !format_v2 {
+            // for backwards compatibility
+            let source_table_identifier = self.parse_object_name()?;
+            self.expect_token(&Token::Colon)?;
+            let destination_table_identifier = self.parse_object_name()?;
+            return Ok(MappingOptions {
+                source: source_table_identifier,
+                destination: destination_table_identifier,
+                partition_key: None,
+            });
+        }
 
         self.expect_keyword(Keyword::FROM)?;
         self.expect_token(&Token::Colon)?;
