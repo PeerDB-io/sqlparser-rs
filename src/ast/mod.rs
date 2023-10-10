@@ -1142,6 +1142,30 @@ pub enum MappingType {
     Schema,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub struct MappingOptions {
+    pub source: ObjectName,
+    pub destination: ObjectName,
+    pub partition_key: Option<Ident>,
+}
+
+impl fmt::Display for MappingOptions {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // (from, to, key)
+        if let Some(partition_key) = &self.partition_key {
+            write!(
+                f,
+                "{{from : {}, to : {}, key : {}}}",
+                self.source, self.destination, partition_key
+            )
+        } else {
+            write!(f, "{{from : {}, to : {}}}", self.source, self.destination)
+        }
+    }
+}
+
 /// CREATE MIRROR mirror_name FROM
 /// peer_1 TO peer_2
 /// WITH TABLE MAPPING (sch1.tbl1:sch2.tbl2, sch1.tbl3:sch2.tbl3)
@@ -1161,12 +1185,12 @@ pub struct CreateMirrorForCDC {
     pub source_peer: ObjectName,
     // name of the target peer
     pub target_peer: ObjectName,
-    // list of mappings from source to target tables.
-    pub mappings: Vec<Mapping>,
     // Options for the mirror job.
     pub with_options: Vec<SqlOption>,
     // mapping type: currently either SCHEMA or TABLE
     pub mapping_type: MappingType,
+    // mapping options
+    pub mapping_options: Vec<MappingOptions>,
 }
 
 /// CREATE MIRROR mirror_name
@@ -3101,7 +3125,7 @@ impl fmt::Display for Statement {
                             mirror_name = cdc.mirror_name,
                             source = cdc.source_peer,
                             target = cdc.target_peer,
-                            formatted_table_mappings = display_comma_separated(&cdc.mappings),
+                            formatted_table_mappings = display_comma_separated(&cdc.mapping_options),
                             mapping_type = if cdc.mapping_type == MappingType::Table { "TABLE" } else { "SCHEMA" }
                         )?;
                         if !cdc.with_options.is_empty() {
