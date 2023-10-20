@@ -1143,16 +1143,34 @@ impl<'a> Parser<'a> {
         })
     }
 
+    pub fn parse_optional_cast_format(&mut self) -> Result<Option<CastFormat>, ParserError> {
+        if self.parse_keyword(Keyword::FORMAT) {
+            let value = self.parse_value()?;
+            if self.parse_keywords(&[Keyword::AT, Keyword::TIME, Keyword::ZONE]) {
+                Ok(Some(CastFormat::ValueAtTimeZone(
+                    value,
+                    self.parse_value()?,
+                )))
+            } else {
+                Ok(Some(CastFormat::Value(value)))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Parse a SQL CAST function e.g. `CAST(expr AS FLOAT)`
     pub fn parse_cast_expr(&mut self) -> Result<Expr, ParserError> {
         self.expect_token(&Token::LParen)?;
         let expr = self.parse_expr()?;
         self.expect_keyword(Keyword::AS)?;
         let data_type = self.parse_data_type()?;
+        let format = self.parse_optional_cast_format()?;
         self.expect_token(&Token::RParen)?;
         Ok(Expr::Cast {
             expr: Box::new(expr),
             data_type,
+            format,
         })
     }
 
@@ -1162,10 +1180,12 @@ impl<'a> Parser<'a> {
         let expr = self.parse_expr()?;
         self.expect_keyword(Keyword::AS)?;
         let data_type = self.parse_data_type()?;
+        let format = self.parse_optional_cast_format()?;
         self.expect_token(&Token::RParen)?;
         Ok(Expr::TryCast {
             expr: Box::new(expr),
             data_type,
+            format,
         })
     }
 
@@ -1175,10 +1195,12 @@ impl<'a> Parser<'a> {
         let expr = self.parse_expr()?;
         self.expect_keyword(Keyword::AS)?;
         let data_type = self.parse_data_type()?;
+        let format = self.parse_optional_cast_format()?;
         self.expect_token(&Token::RParen)?;
         Ok(Expr::SafeCast {
             expr: Box::new(expr),
             data_type,
+            format,
         })
     }
 
@@ -2105,6 +2127,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::Cast {
             expr: Box::new(expr),
             data_type: self.parse_data_type()?,
+            format: None,
         })
     }
 
