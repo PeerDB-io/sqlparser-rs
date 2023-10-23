@@ -124,7 +124,8 @@ impl fmt::Display for SetExpr {
                     SetQuantifier::All
                     | SetQuantifier::Distinct
                     | SetQuantifier::ByName
-                    | SetQuantifier::AllByName => write!(f, " {set_quantifier}")?,
+                    | SetQuantifier::AllByName
+                    | SetQuantifier::DistinctByName => write!(f, " {set_quantifier}")?,
                     SetQuantifier::None => write!(f, "{set_quantifier}")?,
                 }
                 write!(f, " {right}")?;
@@ -164,6 +165,7 @@ pub enum SetQuantifier {
     Distinct,
     ByName,
     AllByName,
+    DistinctByName,
     None,
 }
 
@@ -174,6 +176,7 @@ impl fmt::Display for SetQuantifier {
             SetQuantifier::Distinct => write!(f, "DISTINCT"),
             SetQuantifier::ByName => write!(f, "BY NAME"),
             SetQuantifier::AllByName => write!(f, "ALL BY NAME"),
+            SetQuantifier::DistinctByName => write!(f, "DISTINCT BY NAME"),
             SetQuantifier::None => write!(f, ""),
         }
     }
