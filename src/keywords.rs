@@ -481,6 +481,7 @@ define_keywords!(
     POSITION_REGEX,
     POSTGRES,
     POWER,
+    PRAGMA,
     PRECEDES,
     PRECEDING,
     PRECISION,
