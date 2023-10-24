@@ -6798,6 +6798,9 @@ impl<'a> Parser<'a> {
             None
         };
 
+        let ignore = dialect_of!(self is MySqlDialect | GenericDialect)
+            && self.parse_keyword(Keyword::IGNORE);
+
         let action = self.parse_one_of_keywords(&[Keyword::INTO, Keyword::OVERWRITE]);
         let into = action == Some(Keyword::INTO);
         let overwrite = action == Some(Keyword::OVERWRITE);
@@ -6895,6 +6898,7 @@ impl<'a> Parser<'a> {
             Ok(Statement::Insert {
                 or,
                 table_name,
+                ignore,
                 into,
                 overwrite,
                 partitioned,
