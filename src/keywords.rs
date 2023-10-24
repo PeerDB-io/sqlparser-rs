@@ -527,6 +527,7 @@ define_keywords!(
     REPLACE,
     REPLICATION,
     RESET,
+    RESPECT,
     RESTRICT,
     RESULT,
     RETAIN,
