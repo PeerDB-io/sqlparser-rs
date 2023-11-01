@@ -471,6 +471,7 @@ define_keywords!(
     PARTITIONS,
     PASSWORD,
     PATTERN,
+    PAUSE,
     PEER,
     PERCENT,
     PERCENTILE_CONT,
