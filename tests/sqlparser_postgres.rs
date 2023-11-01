@@ -3199,7 +3199,7 @@ fn parse_drop_mirror() {
 #[test]
 fn parse_mirror_for_select() {
     match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 FOR $$SELECT 1$$ WITH (key1 = 'value1', key2 = 'value2')") {
-         Statement::CreateMirror { if_not_exists,create_mirror: MirrorSelect(select) } => {
+        Statement::CreateMirror { if_not_exists,create_mirror: MirrorSelect(select) } => {
             assert!(if_not_exists);
             assert_eq!(select.mirror_name, ObjectName(vec![Ident::new("test_mirror")]));
             assert_eq!(select.source_peer, ObjectName(vec![Ident::new("p1")]));
@@ -3210,9 +3210,123 @@ fn parse_mirror_for_select() {
             assert_eq!(select.with_options[0].value, Value::SingleQuotedString("value1".into()));
             assert_eq!(select.with_options[1].name, Ident::new("key2"));
             assert_eq!(select.with_options[1].value, Value::SingleQuotedString("value2".into()));
-         },
+        },
         _ => unreachable!(),
     }
+}
+
+#[test]
+fn parse_mirror_table_mapping_v1() {
+    match pg()
+        .parse_sql_statements(
+            "CREATE MIRROR test FROM p1 TO p2 WITH TABLE MAPPING (\
+        schema1.source:schema2.target,\
+        schema3.source2:schema4.target2\
+        ) WITH (key1 = 'value1')",
+        )
+        .unwrap()
+        .first()
+        .unwrap()
+    {
+        Statement::CreateMirror {
+            if_not_exists,
+            create_mirror: CDC(cdc),
+        } => {
+            assert!(!if_not_exists);
+            assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test")]));
+            assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
+            assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
+            assert_eq!(cdc.with_options.len(), 1);
+            assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
+            assert_eq!(
+                cdc.with_options[0].value,
+                Value::SingleQuotedString("value1".into())
+            );
+            assert_eq!(cdc.mapping_type, MappingType::Table);
+            assert_eq!(cdc.mapping_options.len(), 2);
+            assert_eq!(
+                cdc.mapping_options[0].source,
+                ObjectName(vec![Ident::new("schema1"), Ident::new("source")])
+            );
+            assert_eq!(
+                cdc.mapping_options[0].destination,
+                ObjectName(vec![Ident::new("schema2"), Ident::new("target")])
+            );
+            assert_eq!(cdc.mapping_options[0].partition_key, None);
+            assert_eq!(
+                cdc.mapping_options[1].source,
+                ObjectName(vec![Ident::new("schema3"), Ident::new("source2")])
+            );
+            assert_eq!(
+                cdc.mapping_options[1].destination,
+                ObjectName(vec![Ident::new("schema4"), Ident::new("target2")])
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_mirror_table_mapping_v2() {
+    match pg()
+        .parse_sql_statements(
+            "CREATE MIRROR test FROM p1 TO p2 WITH TABLE MAPPING (\
+        {from:schema1.source,to:schema2.target},\
+        {to:schema4.target2,from:schema3.source2,key:k}\
+        ) WITH (key1 = 'value1')",
+        )
+        .unwrap()
+        .first()
+        .unwrap()
+    {
+        Statement::CreateMirror {
+            if_not_exists,
+            create_mirror: CDC(cdc),
+        } => {
+            assert!(!if_not_exists);
+            assert_eq!(cdc.mirror_name, ObjectName(vec![Ident::new("test")]));
+            assert_eq!(cdc.source_peer, ObjectName(vec![Ident::new("p1")]));
+            assert_eq!(cdc.target_peer, ObjectName(vec![Ident::new("p2")]));
+            assert_eq!(cdc.with_options.len(), 1);
+            assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
+            assert_eq!(
+                cdc.with_options[0].value,
+                Value::SingleQuotedString("value1".into())
+            );
+            assert_eq!(cdc.mapping_type, MappingType::Table);
+            assert_eq!(cdc.mapping_options.len(), 2);
+            assert_eq!(
+                cdc.mapping_options[0].source,
+                ObjectName(vec![Ident::new("schema1"), Ident::new("source")])
+            );
+            assert_eq!(
+                cdc.mapping_options[0].destination,
+                ObjectName(vec![Ident::new("schema2"), Ident::new("target")])
+            );
+            assert_eq!(cdc.mapping_options[0].partition_key, None);
+            assert_eq!(
+                cdc.mapping_options[1].source,
+                ObjectName(vec![Ident::new("schema3"), Ident::new("source2")])
+            );
+            assert_eq!(
+                cdc.mapping_options[1].destination,
+                ObjectName(vec![Ident::new("schema4"), Ident::new("target2")])
+            );
+            assert_eq!(cdc.mapping_options[1].partition_key, Some(Ident::new("k")));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_mirror_table_mapping_v2_missing() {
+    assert!(pg()
+        .parse_sql_statements(
+            "CREATE MIRROR test FROM p1 TO p2 WITH TABLE MAPPING (\
+        {from:asdf}\
+        ) WITH (key1 = 'value1')"
+        )
+        .is_err());
 }
 
 #[test]

@@ -1153,16 +1153,12 @@ pub struct MappingOptions {
 
 impl fmt::Display for MappingOptions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // (from, to, key)
+        // (from, to, key, exclude)
+        write!(f, "{{from : {}, to : {}", self.source, self.destination)?;
         if let Some(partition_key) = &self.partition_key {
-            write!(
-                f,
-                "{{from : {}, to : {}, key : {}}}",
-                self.source, self.destination, partition_key
-            )
-        } else {
-            write!(f, "{{from : {}, to : {}}}", self.source, self.destination)
+            write!(f, ", key : {}", partition_key)?;
         }
+        write!(f, "}}")
     }
 }
 
