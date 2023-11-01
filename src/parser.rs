@@ -7280,14 +7280,21 @@ impl<'a> Parser<'a> {
                 source: source_table_identifier,
                 destination: destination_table_identifier,
                 partition_key: None,
+                exclude: None,
             });
         }
 
         let mut source_table_identifier = None;
         let mut destination_table_identifier = None;
         let mut partition_key = None;
+        let mut exclude = None;
         loop {
-            let kw = self.expect_one_of_keywords(&[Keyword::FROM, Keyword::TO, Keyword::KEY])?;
+            let kw = self.expect_one_of_keywords(&[
+                Keyword::FROM,
+                Keyword::TO,
+                Keyword::KEY,
+                Keyword::EXCLUDE,
+            ])?;
             self.expect_token(&Token::Colon)?;
             match kw {
                 Keyword::FROM => {
@@ -7308,6 +7315,27 @@ impl<'a> Parser<'a> {
                     }
                     partition_key = Some(self.parse_identifier()?);
                 }
+                Keyword::EXCLUDE => {
+                    if exclude.is_some() {
+                        return Err(ParserError::ParserError("Duplicate EXCLUDE".to_string()));
+                    }
+                    let mut ex = Vec::new();
+                    self.expect_token(&Token::LBracket)?;
+                    loop {
+                        ex.push(self.parse_identifier()?);
+                        let next_token = self.next_token();
+                        if next_token == Token::RBracket {
+                            break;
+                        }
+                        if next_token != Token::Comma {
+                            return self.expected("comma", next_token);
+                        }
+                        if self.consume_token(&Token::RBracket) {
+                            break;
+                        }
+                    }
+                    exclude = Some(ex);
+                }
                 // unreachable because expect_one_of_keywords used above
                 _ => unreachable!(),
             }
@@ -7324,6 +7352,7 @@ impl<'a> Parser<'a> {
                 source: source_table_identifier,
                 destination: destination_table_identifier,
                 partition_key,
+                exclude,
             })
         } else {
             Err(ParserError::ParserError("Expected FROM/TO".to_string()))
