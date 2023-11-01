@@ -3286,7 +3286,9 @@ fn parse_mirror_table_mapping_v2() {
         .parse_sql_statements(
             "CREATE MIRROR test FROM p1 TO p2 WITH TABLE MAPPING (\
         {from:schema1.source,to:schema2.target},\
-        {to:schema4.target2,from:schema3.source2,key:k}\
+        {to:schema4.target2,from:schema3.source2,key:k},\
+        {exclude:[col1,'col2-3'],to:target3,from:source3},\
+        {exclude:[col3,],to:target3,from:source3}\
         ) WITH (key1 = 'value1')",
         )
         .unwrap()
@@ -3308,7 +3310,7 @@ fn parse_mirror_table_mapping_v2() {
                 Value::SingleQuotedString("value1".into())
             );
             assert_eq!(cdc.mapping_type, MappingType::Table);
-            assert_eq!(cdc.mapping_options.len(), 2);
+            assert_eq!(cdc.mapping_options.len(), 4);
             assert_eq!(
                 cdc.mapping_options[0].source,
                 ObjectName(vec![Ident::new("schema1"), Ident::new("source")])
@@ -3327,6 +3329,14 @@ fn parse_mirror_table_mapping_v2() {
                 ObjectName(vec![Ident::new("schema4"), Ident::new("target2")])
             );
             assert_eq!(cdc.mapping_options[1].partition_key, Some(Ident::new("k")));
+            assert_eq!(
+                cdc.mapping_options[2].exclude,
+                Some(vec![Ident::new("col1"), Ident::with_quote('\'', "col2-3")])
+            );
+            assert_eq!(
+                cdc.mapping_options[3].exclude,
+                Some(vec![Ident::new("col3")])
+            );
         }
         _ => unreachable!(),
     }

@@ -1148,6 +1148,7 @@ pub enum MappingType {
 pub struct MappingOptions {
     pub source: ObjectName,
     pub destination: ObjectName,
+    pub exclude: Option<Vec<Ident>>,
     pub partition_key: Option<Ident>,
 }
 
@@ -1157,6 +1158,18 @@ impl fmt::Display for MappingOptions {
         write!(f, "{{from : {}, to : {}", self.source, self.destination)?;
         if let Some(partition_key) = &self.partition_key {
             write!(f, ", key : {}", partition_key)?;
+        }
+        if let Some(exclude) = &self.exclude {
+            write!(f, ", exclude : [")?;
+            let mut first = true;
+            for ident in exclude.iter() {
+                if first {
+                    write!(f, ", ")?;
+                    first = false;
+                }
+                write!(f, "{}", ident)?;
+            }
+            write!(f, "]")?;
         }
         write!(f, "}}")
     }
