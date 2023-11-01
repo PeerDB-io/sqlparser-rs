@@ -3042,6 +3042,8 @@ impl<'a> Parser<'a> {
             return self.parse_drop_function();
         } else if self.parse_keyword(Keyword::MIRROR) {
             return self.parse_drop_mirror();
+        } else if self.parse_keyword(Keyword::PEER) {
+            return self.parse_drop_peer();
         } else {
             return self.expected(
                 "TABLE, VIEW, INDEX, ROLE, SCHEMA, FUNCTION, STAGE or SEQUENCE after DROP",
@@ -3117,6 +3119,18 @@ impl<'a> Parser<'a> {
         Ok(Statement::DropMirror {
             if_exists,
             mirror_name,
+        })
+    }
+
+    /// ```sql
+    /// DROP PEER [IF EXISTS] name
+    /// ```
+    fn parse_drop_peer(&mut self) -> Result<Statement, ParserError> {
+        let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+        let peer_name = self.parse_object_name()?;
+        Ok(Statement::DropPeer {
+            if_exists,
+            peer_name,
         })
     }
 

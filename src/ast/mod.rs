@@ -1846,6 +1846,12 @@ pub enum Statement {
         peer_type: PeerType,
         with_options: Vec<SqlOption>,
     },
+    /// DROP PEER [IF EXISTS] peer_name
+    DropPeer {
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        if_exists: bool,
+        peer_name: ObjectName,
+    },
     CreateMirror {
         #[cfg_attr(feature = "derive-visitor", drive(skip))]
         if_not_exists: bool,
@@ -3167,6 +3173,17 @@ impl fmt::Display for Statement {
                 if !with_options.is_empty() {
                     write!(f, " WITH ({})", display_comma_separated(with_options))?;
                 }
+                Ok(())
+            }
+            Statement::DropPeer {
+                if_exists,
+                peer_name,
+            } => {
+                write!(
+                    f,
+                    "DROP PEER {if_exists}{peer_name}",
+                    if_exists = if *if_exists { "IF EXISTS " } else { "" },
+                )?;
                 Ok(())
             }
             Statement::DropMirror {
