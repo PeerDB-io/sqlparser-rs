@@ -8109,10 +8109,10 @@ impl<'a> Parser<'a> {
         self.expect_keyword(Keyword::MIRROR)?;
         let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
         let mirror_name = self.parse_object_name()?;
-        return Ok(Statement::PauseMirror {
+        Ok(Statement::PauseMirror {
             if_exists,
             mirror_name,
-        });
+        })
     }
 
     /// The index of the first unprocessed token.
