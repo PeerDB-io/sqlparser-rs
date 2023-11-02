@@ -2167,7 +2167,7 @@ pub enum Statement {
         #[cfg_attr(feature = "derive-visitor", drive(skip))]
         if_exists: bool,
         mirror_name: ObjectName,
-    }
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -3661,7 +3661,7 @@ impl fmt::Display for Statement {
             Statement::ExecuteMirror { mirror_name } => {
                 write!(f, "EXECUTE MIRROR {mirror_name}", mirror_name = mirror_name)?;
                 Ok(())
-            },
+            }
             Statement::PauseMirror {
                 if_exists,
                 mirror_name,

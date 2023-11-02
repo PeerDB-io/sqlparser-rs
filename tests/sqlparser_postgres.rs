@@ -3636,7 +3636,6 @@ fn parse_drop_mirror_if_exists() {
     }
 }
 
-
 #[test]
 fn parse_pause_mirror() {
     match pg().verified_stmt("PAUSE MIRROR m1") {
