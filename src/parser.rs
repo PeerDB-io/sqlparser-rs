@@ -7269,31 +7269,51 @@ impl<'a> Parser<'a> {
             });
         }
 
-        self.expect_keyword(Keyword::FROM)?;
-        self.expect_token(&Token::Colon)?;
-        let source_table_identifier = self.parse_object_name()?;
-        self.expect_token(&Token::Comma)?;
-
-        self.expect_keyword(Keyword::TO)?;
-        self.expect_token(&Token::Colon)?;
-        let destination_table_identifier = self.parse_object_name()?;
-
-        let has_part_key = self.consume_token(&Token::Comma);
-        let partition_key = if has_part_key {
-            self.expect_keyword(Keyword::KEY)?;
+        let mut source_table_identifier = None;
+        let mut destination_table_identifier = None;
+        let mut partition_key = None;
+        loop {
+            let kw = self.expect_one_of_keywords(&[Keyword::FROM, Keyword::TO, Keyword::KEY])?;
             self.expect_token(&Token::Colon)?;
-            Some(self.parse_identifier()?)
-        } else {
-            None
-        };
-
+            match kw {
+                Keyword::FROM => {
+                    if source_table_identifier.is_some() {
+                        return Err(ParserError::ParserError("Duplicate FROM".to_string()));
+                    }
+                    source_table_identifier = Some(self.parse_object_name()?);
+                }
+                Keyword::TO => {
+                    if destination_table_identifier.is_some() {
+                        return Err(ParserError::ParserError("Duplicate TO".to_string()));
+                    }
+                    destination_table_identifier = Some(self.parse_object_name()?);
+                }
+                Keyword::KEY => {
+                    if partition_key.is_some() {
+                        return Err(ParserError::ParserError("Duplicate KEY".to_string()));
+                    }
+                    partition_key = Some(self.parse_identifier()?);
+                }
+                // unreachable because expect_one_of_keywords used above
+                _ => unreachable!(),
+            }
+            if !self.consume_token(&Token::Comma) {
+                break;
+            }
+        }
         self.expect_token(&Token::RBrace)?;
 
-        Ok(MappingOptions {
-            source: source_table_identifier,
-            destination: destination_table_identifier,
-            partition_key,
-        })
+        if let (Some(source_table_identifier), Some(destination_table_identifier)) =
+            (source_table_identifier, destination_table_identifier)
+        {
+            Ok(MappingOptions {
+                source: source_table_identifier,
+                destination: destination_table_identifier,
+                partition_key,
+            })
+        } else {
+            Err(ParserError::ParserError("Expected FROM/TO".to_string()))
+        }
     }
 }
 
