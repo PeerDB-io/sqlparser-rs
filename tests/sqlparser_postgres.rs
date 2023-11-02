@@ -3610,6 +3610,20 @@ fn parse_create_mirror_with_schema() {
 
 #[test]
 fn parse_drop_mirror() {
+    match pg().verified_stmt("DROP MIRROR m1") {
+        Statement::DropMirror {
+            if_exists,
+            mirror_name,
+        } => {
+            assert!(!if_exists);
+            assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_drop_mirror_if_exists() {
     match pg().verified_stmt("DROP MIRROR IF EXISTS m1") {
         Statement::DropMirror {
             if_exists,
@@ -3622,8 +3636,51 @@ fn parse_drop_mirror() {
     }
 }
 
+
+#[test]
+fn parse_pause_mirror() {
+    match pg().verified_stmt("PAUSE MIRROR m1") {
+        Statement::PauseMirror {
+            if_exists,
+            mirror_name,
+        } => {
+            assert!(!if_exists);
+            assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_pause_mirror_if_exists() {
+    match pg().verified_stmt("PAUSE MIRROR IF EXISTS m1") {
+        Statement::PauseMirror {
+            if_exists,
+            mirror_name,
+        } => {
+            assert!(if_exists);
+            assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
+        }
+        _ => unreachable!(),
+    }
+}
+
 #[test]
 fn parse_drop_peer() {
+    match pg().verified_stmt("DROP PEER p1") {
+        Statement::DropPeer {
+            if_exists,
+            peer_name,
+        } => {
+            assert!(!if_exists);
+            assert_eq!(peer_name, ObjectName(vec![Ident::new("p1")]));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_drop_peer_if_exists() {
     match pg().verified_stmt("DROP PEER IF EXISTS p1") {
         Statement::DropPeer {
             if_exists,
