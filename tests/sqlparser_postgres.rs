@@ -3197,6 +3197,20 @@ fn parse_drop_mirror() {
 }
 
 #[test]
+fn parse_drop_peer() {
+    match pg().verified_stmt("DROP PEER IF EXISTS p1") {
+        Statement::DropPeer {
+            if_exists,
+            peer_name,
+        } => {
+            assert!(if_exists);
+            assert_eq!(peer_name, ObjectName(vec![Ident::new("p1")]));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_mirror_for_select() {
     match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 FOR $$SELECT 1$$ WITH (key1 = 'value1', key2 = 'value2')") {
         Statement::CreateMirror { if_not_exists,create_mirror: MirrorSelect(select) } => {
