@@ -420,7 +420,11 @@ impl<'a> Parser<'a> {
                 Token::EOF => break,
 
                 // end of statement
-                Token::Word(word) if word.keyword == Keyword::END => break,
+                Token::Word(word)
+                    if word.keyword == Keyword::END && !dialect_of!(self is PostgreSqlDialect) =>
+                {
+                    break
+                }
                 _ => {}
             }
 
