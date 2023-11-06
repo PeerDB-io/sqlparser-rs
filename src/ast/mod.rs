@@ -2156,6 +2156,12 @@ pub enum Statement {
     ExecuteMirror {
         mirror_name: Ident,
     },
+    ResyncMirror {
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        if_exists: bool,
+        mirror_name: ObjectName,
+        with_options: Vec<SqlOption>
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -3648,6 +3654,21 @@ impl fmt::Display for Statement {
             }
             Statement::ExecuteMirror { mirror_name } => {
                 write!(f, "EXECUTE MIRROR {mirror_name}", mirror_name = mirror_name)?;
+                Ok(())
+            },
+            Statement::ResyncMirror {
+                if_exists,
+                mirror_name,
+                with_options,
+            } => {
+                write!(
+                    f,
+                    "RESYNC MIRROR {if_exists}{mirror_name}",
+                    if_exists = if *if_exists { "IF EXISTS " } else { "" },
+                )?;
+                if !with_options.is_empty() {
+                    write!(f, " WITH ({})", display_comma_separated(with_options))?;
+                }
                 Ok(())
             }
         }
