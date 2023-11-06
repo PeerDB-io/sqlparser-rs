@@ -2160,7 +2160,7 @@ pub enum Statement {
         #[cfg_attr(feature = "derive-visitor", drive(skip))]
         if_exists: bool,
         mirror_name: ObjectName,
-        with_options: Vec<SqlOption>
+        with_options: Vec<SqlOption>,
     },
 }
 
@@ -3655,7 +3655,7 @@ impl fmt::Display for Statement {
             Statement::ExecuteMirror { mirror_name } => {
                 write!(f, "EXECUTE MIRROR {mirror_name}", mirror_name = mirror_name)?;
                 Ok(())
-            },
+            }
             Statement::ResyncMirror {
                 if_exists,
                 mirror_name,
