@@ -3637,6 +3637,39 @@ fn parse_drop_peer() {
 }
 
 #[test]
+fn parse_resync_mirror() {
+    match pg().verified_stmt("RESYNC MIRROR m1") {
+        Statement::ResyncMirror {
+            if_exists,
+            mirror_name,
+            ..
+        } => {
+            assert!(!if_exists);
+            assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_resync_mirror_if_exists() {
+    match pg().verified_stmt("RESYNC MIRROR IF EXISTS m1 WITH (query_string = 'SELECT 1')") {
+        Statement::ResyncMirror {
+            if_exists,
+            mirror_name,
+            with_options,
+        } => {
+            assert!(if_exists);
+            assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
+            assert_eq!(with_options.len(), 1);
+            assert_eq!(with_options[0].name, Ident::new("query_string"));
+            assert_eq!(with_options[0].value, Value::SingleQuotedString("SELECT 1".into()));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_mirror_for_select() {
     match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 FOR $$SELECT 1$$ WITH (key1 = 'value1', key2 = 'value2')") {
         Statement::CreateMirror { if_not_exists,create_mirror: MirrorSelect(select) } => {
