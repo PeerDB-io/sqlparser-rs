@@ -3663,7 +3663,10 @@ fn parse_resync_mirror_if_exists() {
             assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
             assert_eq!(with_options.len(), 1);
             assert_eq!(with_options[0].name, Ident::new("query_string"));
-            assert_eq!(with_options[0].value, Value::SingleQuotedString("SELECT 1".into()));
+            assert_eq!(
+                with_options[0].value,
+                Value::SingleQuotedString("SELECT 1".into())
+            );
         }
         _ => unreachable!(),
     }
