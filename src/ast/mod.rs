@@ -2168,6 +2168,12 @@ pub enum Statement {
         if_exists: bool,
         mirror_name: ObjectName,
     },
+    // RESUME MIRROR [IF EXISTS] mirror_name
+    ResumeMirror {
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        if_exists: bool,
+        mirror_name: ObjectName,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -3669,6 +3675,17 @@ impl fmt::Display for Statement {
                 write!(
                     f,
                     "PAUSE MIRROR {if_exists}{mirror_name}",
+                    if_exists = if *if_exists { "IF EXISTS " } else { "" },
+                )?;
+                Ok(())
+            }
+            Statement::ResumeMirror {
+                if_exists,
+                mirror_name,
+            } => {
+                write!(
+                    f,
+                    "RESUME MIRROR {if_exists}{mirror_name}",
                     if_exists = if *if_exists { "IF EXISTS " } else { "" },
                 )?;
                 Ok(())

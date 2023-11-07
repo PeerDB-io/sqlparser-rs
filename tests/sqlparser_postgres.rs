@@ -3665,6 +3665,34 @@ fn parse_pause_mirror_if_exists() {
 }
 
 #[test]
+fn parse_resume_mirror() {
+    match pg().verified_stmt("RESUME MIRROR m1") {
+        Statement::ResumeMirror {
+            if_exists,
+            mirror_name,
+        } => {
+            assert!(!if_exists);
+            assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_resume_mirror_if_exists() {
+    match pg().verified_stmt("RESUME MIRROR IF EXISTS m1") {
+        Statement::ResumeMirror {
+            if_exists,
+            mirror_name,
+        } => {
+            assert!(if_exists);
+            assert_eq!(mirror_name, ObjectName(vec![Ident::new("m1")]));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_drop_peer() {
     match pg().verified_stmt("DROP PEER p1") {
         Statement::DropPeer {

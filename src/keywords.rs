@@ -535,6 +535,7 @@ define_keywords!(
     RESPECT,
     RESTRICT,
     RESULT,
+    RESUME,
     RESYNC,
     RETAIN,
     RETURN,

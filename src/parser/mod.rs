@@ -523,6 +523,7 @@ impl<'a> Parser<'a> {
                 Keyword::PRAGMA => Ok(self.parse_pragma()?),
                 Keyword::RESYNC => Ok(self.parse_resync()?),
                 Keyword::PAUSE => Ok(self.parse_pause_mirror()?),
+                Keyword::RESUME => Ok(self.parse_resume_mirror()?),
                 _ => self.expected("an SQL statement", next_token),
             },
             Token::LParen => {
@@ -8110,6 +8111,16 @@ impl<'a> Parser<'a> {
         let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
         let mirror_name = self.parse_object_name()?;
         Ok(Statement::PauseMirror {
+            if_exists,
+            mirror_name,
+        })
+    }
+
+    pub fn parse_resume_mirror(&mut self) -> Result<Statement, ParserError> {
+        self.expect_keyword(Keyword::MIRROR)?;
+        let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+        let mirror_name = self.parse_object_name()?;
+        Ok(Statement::ResumeMirror {
             if_exists,
             mirror_name,
         })
