@@ -521,6 +521,7 @@ impl<'a> Parser<'a> {
                 Keyword::MERGE => Ok(self.parse_merge()?),
                 // `PRAGMA` is sqlite specific https://www.sqlite.org/pragma.html
                 Keyword::PRAGMA => Ok(self.parse_pragma()?),
+                Keyword::RESYNC => Ok(self.parse_resync()?),
                 _ => self.expected("an SQL statement", next_token),
             },
             Token::LParen => {
@@ -8088,6 +8089,19 @@ impl<'a> Parser<'a> {
                 }),
             })
         }
+    }
+
+    pub fn parse_resync(&mut self) -> Result<Statement, ParserError> {
+        self.expect_keyword(Keyword::MIRROR)?;
+        let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+        let mirror_name = self.parse_object_name()?;
+        let with_options = self.parse_options(Keyword::WITH)?;
+
+        Ok(Statement::ResyncMirror {
+            if_exists,
+            mirror_name,
+            with_options,
+        })
     }
 
     /// The index of the first unprocessed token.
