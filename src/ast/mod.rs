@@ -2146,7 +2146,7 @@ pub enum Statement {
         if_not_exists: bool,
         create_mirror: CreateMirror,
     },
-    /// DROP MIRROR [IF EXISTS] mirror_name
+    // DROP MIRROR [IF EXISTS] mirror_name
     DropMirror {
         #[cfg_attr(feature = "derive-visitor", drive(skip))]
         if_exists: bool,
@@ -2161,6 +2161,18 @@ pub enum Statement {
         if_exists: bool,
         mirror_name: ObjectName,
         with_options: Vec<SqlOption>,
+    },
+    // DROP MIRROR [IF EXISTS] mirror_name
+    PauseMirror {
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        if_exists: bool,
+        mirror_name: ObjectName,
+    },
+    // RESUME MIRROR [IF EXISTS] mirror_name
+    ResumeMirror {
+        #[cfg_attr(feature = "derive-visitor", drive(skip))]
+        if_exists: bool,
+        mirror_name: ObjectName,
     },
 }
 
@@ -3654,6 +3666,28 @@ impl fmt::Display for Statement {
             }
             Statement::ExecuteMirror { mirror_name } => {
                 write!(f, "EXECUTE MIRROR {mirror_name}", mirror_name = mirror_name)?;
+                Ok(())
+            }
+            Statement::PauseMirror {
+                if_exists,
+                mirror_name,
+            } => {
+                write!(
+                    f,
+                    "PAUSE MIRROR {if_exists}{mirror_name}",
+                    if_exists = if *if_exists { "IF EXISTS " } else { "" },
+                )?;
+                Ok(())
+            }
+            Statement::ResumeMirror {
+                if_exists,
+                mirror_name,
+            } => {
+                write!(
+                    f,
+                    "RESUME MIRROR {if_exists}{mirror_name}",
+                    if_exists = if *if_exists { "IF EXISTS " } else { "" },
+                )?;
                 Ok(())
             }
             Statement::ResyncMirror {
