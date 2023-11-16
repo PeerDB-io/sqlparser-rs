@@ -535,8 +535,7 @@ impl<'a> Tokenizer<'a> {
     pub fn tokenize(&mut self) -> Result<Vec<Token>, TokenizerError> {
         let twl = self.tokenize_with_location()?;
 
-        let mut tokens: Vec<Token> = vec![];
-        tokens.reserve(twl.len());
+        let mut tokens: Vec<Token> = Vec::with_capacity(twl.len());
         for token_with_location in twl {
             tokens.push(token_with_location.token);
         }
