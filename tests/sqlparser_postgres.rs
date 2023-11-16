@@ -3441,6 +3441,49 @@ fn parse_create_eventhub_group_peer() {
 }
 
 #[test]
+fn parse_create_s3_peer() {
+    match pg().verified_stmt(
+        "CREATE PEER s3_1 FROM S3 WITH \
+            (url = 's3://bucket_name/prefix_name', \
+            access_key_id = 'access_key_id', \
+            secret_access_key = 'secret_access_key')",
+    ) {
+        Statement::CreatePeer {
+            if_not_exists: _,
+            peer_name: _,
+            peer_type,
+            with_options,
+        } => {
+            assert_eq!(peer_type, PeerType::S3);
+            assert_eq!(
+                with_options,
+                vec![
+                    SqlOption {
+                        name: Ident::new("url"),
+                        value: sqlparser::ast::Value::SingleQuotedString(String::from(
+                            "s3://bucket_name/prefix_name"
+                        ))
+                    },
+                    SqlOption {
+                        name: Ident::new("access_key_id"),
+                        value: sqlparser::ast::Value::SingleQuotedString(String::from(
+                            "access_key_id"
+                        ))
+                    },
+                    SqlOption {
+                        name: Ident::new("secret_access_key"),
+                        value: sqlparser::ast::Value::SingleQuotedString(String::from(
+                            "secret_access_key"
+                        ))
+                    }
+                ]
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_create_single_mirror() {
     match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 WITH TABLE MAPPING ({from : s1.t1, to : s2.t2}) WITH (key1 = 'value1')") {
          Statement::CreateMirror { if_not_exists,create_mirror: CDC(cdc) } => {
