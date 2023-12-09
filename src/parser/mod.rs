@@ -420,10 +420,10 @@ impl<'a> Parser<'a> {
                 Token::EOF => break,
 
                 // end of statement
-                Token::Word(word)
-                    if word.keyword == Keyword::END && !dialect_of!(self is PostgreSqlDialect) =>
-                {
-                    break
+                Token::Word(word) => {
+                    if expecting_statement_delimiter && word.keyword == Keyword::END {
+                        break;
+                    }
                 }
                 _ => {}
             }
@@ -505,9 +505,13 @@ impl<'a> Parser<'a> {
                 // standard `START TRANSACTION` statement. It is supported
                 // by at least PostgreSQL and MySQL.
                 Keyword::BEGIN => Ok(self.parse_begin()?),
+                // `END` is a nonstandard but common alias for the
+                // standard `COMMIT TRANSACTION` statement. It is supported
+                // by PostgreSQL.
+                Keyword::END => Ok(self.parse_end()?),
                 Keyword::SAVEPOINT => Ok(self.parse_savepoint()?),
+                Keyword::RELEASE => Ok(self.parse_release()?),
                 Keyword::COMMIT => Ok(self.parse_commit()?),
-                Keyword::END if dialect_of!(self is PostgreSqlDialect) => Ok(self.parse_commit()?),
                 Keyword::ROLLBACK => Ok(self.parse_rollback()?),
                 Keyword::ABORT if dialect_of!(self is PostgreSqlDialect) => {
                     Ok(self.parse_rollback()?)
@@ -758,6 +762,13 @@ impl<'a> Parser<'a> {
         Ok(Statement::Savepoint { name })
     }
 
+    pub fn parse_release(&mut self) -> Result<Statement, ParserError> {
+        let _ = self.parse_keyword(Keyword::SAVEPOINT);
+        let name = self.parse_identifier()?;
+
+        Ok(Statement::ReleaseSavepoint { name })
+    }
+
     /// Parse an expression prefix
     pub fn parse_prefix(&mut self) -> Result<Expr, ParserError> {
         // allow the dialect to override prefix parsing
@@ -832,6 +843,7 @@ impl<'a> Parser<'a> {
                     self.parse_time_functions(ObjectName(vec![w.to_ident()]))
                 }
                 Keyword::CASE => self.parse_case_expr(),
+                Keyword::CONVERT => self.parse_convert_expr(),
                 Keyword::CAST => self.parse_cast_expr(),
                 Keyword::TRY_CAST => self.parse_try_cast_expr(),
                 Keyword::SAFE_CAST => self.parse_safe_cast_expr(),
@@ -1236,6 +1248,57 @@ impl<'a> Parser<'a> {
         } else {
             Ok(None)
         }
+    }
+
+    /// mssql-like convert function
+    fn parse_mssql_convert(&mut self) -> Result<Expr, ParserError> {
+        self.expect_token(&Token::LParen)?;
+        let data_type = self.parse_data_type()?;
+        self.expect_token(&Token::Comma)?;
+        let expr = self.parse_expr()?;
+        self.expect_token(&Token::RParen)?;
+        Ok(Expr::Convert {
+            expr: Box::new(expr),
+            data_type: Some(data_type),
+            charset: None,
+            target_before_value: true,
+        })
+    }
+
+    /// Parse a SQL CONVERT function:
+    ///  - `CONVERT('héhé' USING utf8mb4)` (MySQL)
+    ///  - `CONVERT('héhé', CHAR CHARACTER SET utf8mb4)` (MySQL)
+    ///  - `CONVERT(DECIMAL(10, 5), 42)` (MSSQL) - the type comes first
+    pub fn parse_convert_expr(&mut self) -> Result<Expr, ParserError> {
+        if self.dialect.convert_type_before_value() {
+            return self.parse_mssql_convert();
+        }
+        self.expect_token(&Token::LParen)?;
+        let expr = self.parse_expr()?;
+        if self.parse_keyword(Keyword::USING) {
+            let charset = self.parse_object_name()?;
+            self.expect_token(&Token::RParen)?;
+            return Ok(Expr::Convert {
+                expr: Box::new(expr),
+                data_type: None,
+                charset: Some(charset),
+                target_before_value: false,
+            });
+        }
+        self.expect_token(&Token::Comma)?;
+        let data_type = self.parse_data_type()?;
+        let charset = if self.parse_keywords(&[Keyword::CHARACTER, Keyword::SET]) {
+            Some(self.parse_object_name()?)
+        } else {
+            None
+        };
+        self.expect_token(&Token::RParen)?;
+        Ok(Expr::Convert {
+            expr: Box::new(expr),
+            data_type: Some(data_type),
+            charset,
+            target_before_value: false,
+        })
     }
 
     /// Parse a SQL CAST function e.g. `CAST(expr AS FLOAT)`
@@ -2355,7 +2418,11 @@ impl<'a> Parser<'a> {
         } else {
             Expr::InList {
                 expr: Box::new(expr),
-                list: self.parse_comma_separated(Parser::parse_expr)?,
+                list: if self.dialect.supports_in_empty_list() {
+                    self.parse_comma_separated0(Parser::parse_expr)?
+                } else {
+                    self.parse_comma_separated(Parser::parse_expr)?
+                },
                 negated,
             }
         };
@@ -2719,6 +2786,27 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(values)
+    }
+
+    /// Parse a comma-separated list of 0+ items accepted by `F`
+    pub fn parse_comma_separated0<T, F>(&mut self, f: F) -> Result<Vec<T>, ParserError>
+    where
+        F: FnMut(&mut Parser<'a>) -> Result<T, ParserError>,
+    {
+        // ()
+        if matches!(self.peek_token().token, Token::RParen) {
+            return Ok(vec![]);
+        }
+        // (,)
+        if self.options.trailing_commas
+            && matches!(self.peek_nth_token(0).token, Token::Comma)
+            && matches!(self.peek_nth_token(1).token, Token::RParen)
+        {
+            let _ = self.consume_token(&Token::Comma);
+            return Ok(vec![]);
+        }
+
+        self.parse_comma_separated(f)
     }
 
     /// Run a parser method `f`, reverting back to the current position
@@ -4249,6 +4337,7 @@ impl<'a> Parser<'a> {
                 generated_as: GeneratedAs::Always,
                 sequence_options: Some(sequence_options),
                 generation_expr: None,
+                generation_expr_mode: None,
             }))
         } else if self.parse_keywords(&[
             Keyword::BY,
@@ -4265,16 +4354,31 @@ impl<'a> Parser<'a> {
                 generated_as: GeneratedAs::ByDefault,
                 sequence_options: Some(sequence_options),
                 generation_expr: None,
+                generation_expr_mode: None,
             }))
         } else if self.parse_keywords(&[Keyword::ALWAYS, Keyword::AS]) {
             if self.expect_token(&Token::LParen).is_ok() {
                 let expr = self.parse_expr()?;
                 self.expect_token(&Token::RParen)?;
-                let _ = self.parse_keywords(&[Keyword::STORED]);
+                let (gen_as, expr_mode) = if self.parse_keywords(&[Keyword::STORED]) {
+                    Ok((
+                        GeneratedAs::ExpStored,
+                        Some(GeneratedExpressionMode::Stored),
+                    ))
+                } else if dialect_of!(self is PostgreSqlDialect) {
+                    // Postgres' AS IDENTITY branches are above, this one needs STORED
+                    self.expected("STORED", self.peek_token())
+                } else if self.parse_keywords(&[Keyword::VIRTUAL]) {
+                    Ok((GeneratedAs::Always, Some(GeneratedExpressionMode::Virtual)))
+                } else {
+                    Ok((GeneratedAs::Always, None))
+                }?;
+
                 Ok(Some(ColumnOption::Generated {
-                    generated_as: GeneratedAs::ExpStored,
+                    generated_as: gen_as,
                     sequence_options: None,
                     generation_expr: Some(expr),
+                    generation_expr_mode: expr_mode,
                 }))
             } else {
                 Ok(None)
@@ -5642,6 +5746,9 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_character_length(&mut self) -> Result<CharacterLength, ParserError> {
+        if self.parse_keyword(Keyword::MAX) {
+            return Ok(CharacterLength::Max);
+        }
         let length = self.parse_literal_uint()?;
         let unit = if self.parse_keyword(Keyword::CHARACTERS) {
             Some(CharLengthUnits::Characters)
@@ -5650,8 +5757,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-
-        Ok(CharacterLength { length, unit })
+        Ok(CharacterLength::IntegerLength { length, unit })
     }
 
     pub fn parse_optional_precision_scale(
@@ -5848,6 +5954,7 @@ impl<'a> Parser<'a> {
                 offset: None,
                 fetch: None,
                 locks: vec![],
+                for_clause: None,
             })
         } else if self.parse_keyword(Keyword::UPDATE) {
             let update = self.parse_update()?;
@@ -5860,6 +5967,7 @@ impl<'a> Parser<'a> {
                 offset: None,
                 fetch: None,
                 locks: vec![],
+                for_clause: None,
             })
         } else {
             let body = Box::new(self.parse_query_body(0)?);
@@ -5911,9 +6019,15 @@ impl<'a> Parser<'a> {
                 None
             };
 
+            let mut for_clause = None;
             let mut locks = Vec::new();
             while self.parse_keyword(Keyword::FOR) {
-                locks.push(self.parse_lock()?);
+                if let Some(parsed_for_clause) = self.parse_for_clause()? {
+                    for_clause = Some(parsed_for_clause);
+                    break;
+                } else {
+                    locks.push(self.parse_lock()?);
+                }
             }
 
             Ok(Query {
@@ -5925,8 +6039,111 @@ impl<'a> Parser<'a> {
                 offset,
                 fetch,
                 locks,
+                for_clause,
             })
         }
+    }
+
+    /// Parse a mssql `FOR [XML | JSON | BROWSE]` clause
+    pub fn parse_for_clause(&mut self) -> Result<Option<ForClause>, ParserError> {
+        if self.parse_keyword(Keyword::XML) {
+            Ok(Some(self.parse_for_xml()?))
+        } else if self.parse_keyword(Keyword::JSON) {
+            Ok(Some(self.parse_for_json()?))
+        } else if self.parse_keyword(Keyword::BROWSE) {
+            Ok(Some(ForClause::Browse))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Parse a mssql `FOR XML` clause
+    pub fn parse_for_xml(&mut self) -> Result<ForClause, ParserError> {
+        let for_xml = if self.parse_keyword(Keyword::RAW) {
+            let mut element_name = None;
+            if self.peek_token().token == Token::LParen {
+                self.expect_token(&Token::LParen)?;
+                element_name = Some(self.parse_literal_string()?);
+                self.expect_token(&Token::RParen)?;
+            }
+            ForXml::Raw(element_name)
+        } else if self.parse_keyword(Keyword::AUTO) {
+            ForXml::Auto
+        } else if self.parse_keyword(Keyword::EXPLICIT) {
+            ForXml::Explicit
+        } else if self.parse_keyword(Keyword::PATH) {
+            let mut element_name = None;
+            if self.peek_token().token == Token::LParen {
+                self.expect_token(&Token::LParen)?;
+                element_name = Some(self.parse_literal_string()?);
+                self.expect_token(&Token::RParen)?;
+            }
+            ForXml::Path(element_name)
+        } else {
+            return Err(ParserError::ParserError(
+                "Expected FOR XML [RAW | AUTO | EXPLICIT | PATH ]".to_string(),
+            ));
+        };
+        let mut elements = false;
+        let mut binary_base64 = false;
+        let mut root = None;
+        let mut r#type = false;
+        while self.peek_token().token == Token::Comma {
+            self.next_token();
+            if self.parse_keyword(Keyword::ELEMENTS) {
+                elements = true;
+            } else if self.parse_keyword(Keyword::BINARY) {
+                self.expect_keyword(Keyword::BASE64)?;
+                binary_base64 = true;
+            } else if self.parse_keyword(Keyword::ROOT) {
+                self.expect_token(&Token::LParen)?;
+                root = Some(self.parse_literal_string()?);
+                self.expect_token(&Token::RParen)?;
+            } else if self.parse_keyword(Keyword::TYPE) {
+                r#type = true;
+            }
+        }
+        Ok(ForClause::Xml {
+            for_xml,
+            elements,
+            binary_base64,
+            root,
+            r#type,
+        })
+    }
+
+    /// Parse a mssql `FOR JSON` clause
+    pub fn parse_for_json(&mut self) -> Result<ForClause, ParserError> {
+        let for_json = if self.parse_keyword(Keyword::AUTO) {
+            ForJson::Auto
+        } else if self.parse_keyword(Keyword::PATH) {
+            ForJson::Path
+        } else {
+            return Err(ParserError::ParserError(
+                "Expected FOR JSON [AUTO | PATH ]".to_string(),
+            ));
+        };
+        let mut root = None;
+        let mut include_null_values = false;
+        let mut without_array_wrapper = false;
+        while self.peek_token().token == Token::Comma {
+            self.next_token();
+            if self.parse_keyword(Keyword::ROOT) {
+                self.expect_token(&Token::LParen)?;
+                root = Some(self.parse_literal_string()?);
+                self.expect_token(&Token::RParen)?;
+            } else if self.parse_keyword(Keyword::INCLUDE_NULL_VALUES) {
+                include_null_values = true;
+            } else if self.parse_keyword(Keyword::WITHOUT_ARRAY_WRAPPER) {
+                without_array_wrapper = true;
+            }
+        }
+        Ok(ForClause::Json {
+            for_json,
+            root,
+            include_null_values,
+            without_array_wrapper,
+        })
     }
 
     /// Parse a CTE (`alias [( col1, col2, ... )] AS (subquery)`)
@@ -6355,6 +6572,8 @@ impl<'a> Parser<'a> {
     pub fn parse_show(&mut self) -> Result<Statement, ParserError> {
         let extended = self.parse_keyword(Keyword::EXTENDED);
         let full = self.parse_keyword(Keyword::FULL);
+        let session = self.parse_keyword(Keyword::SESSION);
+        let global = self.parse_keyword(Keyword::GLOBAL);
         if self
             .parse_one_of_keywords(&[Keyword::COLUMNS, Keyword::FIELDS])
             .is_some()
@@ -6375,9 +6594,10 @@ impl<'a> Parser<'a> {
         } else if self.parse_keyword(Keyword::VARIABLES)
             && dialect_of!(self is MySqlDialect | GenericDialect)
         {
-            // TODO: Support GLOBAL|SESSION
             Ok(Statement::ShowVariables {
                 filter: self.parse_show_statement_filter()?,
+                session,
+                global,
             })
         } else {
             Ok(Statement::ShowVariable {
@@ -6649,9 +6869,20 @@ impl<'a> Parser<'a> {
             // `parse_derived_table_factor` below will return success after parsing the
             // subquery, followed by the closing ')', and the alias of the derived table.
             // In the example above this is case (3).
-            return_ok_if_some!(
+            if let Some(mut table) =
                 self.maybe_parse(|parser| parser.parse_derived_table_factor(NotLateral))
-            );
+            {
+                while let Some(kw) = self.parse_one_of_keywords(&[Keyword::PIVOT, Keyword::UNPIVOT])
+                {
+                    table = match kw {
+                        Keyword::PIVOT => self.parse_pivot_table_factor(table)?,
+                        Keyword::UNPIVOT => self.parse_unpivot_table_factor(table)?,
+                        _ => unreachable!(),
+                    }
+                }
+                return Ok(table);
+            }
+
             // A parsing error from `parse_derived_table_factor` indicates that the '(' we've
             // recently consumed does not start a derived table (cases 1, 2, or 4).
             // `maybe_parse` will ignore such an error and rewind to be after the opening '('.
@@ -7115,21 +7346,23 @@ impl<'a> Parser<'a> {
             let table = self.parse_keyword(Keyword::TABLE);
             let table_name = self.parse_object_name()?;
             let is_mysql = dialect_of!(self is MySqlDialect);
-            let columns = self.parse_parenthesized_column_list(Optional, is_mysql)?;
 
-            let partitioned = if self.parse_keyword(Keyword::PARTITION) {
-                self.expect_token(&Token::LParen)?;
-                let r = Some(self.parse_comma_separated(Parser::parse_expr)?);
-                self.expect_token(&Token::RParen)?;
-                r
-            } else {
-                None
-            };
+            let (columns, partitioned, after_columns, source) =
+                if self.parse_keywords(&[Keyword::DEFAULT, Keyword::VALUES]) {
+                    (vec![], None, vec![], None)
+                } else {
+                    let columns = self.parse_parenthesized_column_list(Optional, is_mysql)?;
 
-            // Hive allows you to specify columns after partitions as well if you want.
-            let after_columns = self.parse_parenthesized_column_list(Optional, false)?;
+                    let partitioned = self.parse_insert_partition()?;
 
-            let source = Box::new(self.parse_query()?);
+                    // Hive allows you to specify columns after partitions as well if you want.
+                    let after_columns = self.parse_parenthesized_column_list(Optional, false)?;
+
+                    let source = Some(Box::new(self.parse_query()?));
+
+                    (columns, partitioned, after_columns, source)
+                };
+
             let on = if self.parse_keyword(Keyword::ON) {
                 if self.parse_keyword(Keyword::CONFLICT) {
                     let conflict_target =
@@ -7197,6 +7430,17 @@ impl<'a> Parser<'a> {
                 on,
                 returning,
             })
+        }
+    }
+
+    pub fn parse_insert_partition(&mut self) -> Result<Option<Vec<Expr>>, ParserError> {
+        if self.parse_keyword(Keyword::PARTITION) {
+            self.expect_token(&Token::LParen)?;
+            let partition_cols = Some(self.parse_comma_separated(Parser::parse_expr)?);
+            self.expect_token(&Token::RParen)?;
+            Ok(partition_cols)
+        } else {
+            Ok(None)
         }
     }
 
@@ -7646,6 +7890,12 @@ impl<'a> Parser<'a> {
         })
     }
 
+    pub fn parse_end(&mut self) -> Result<Statement, ParserError> {
+        Ok(Statement::Commit {
+            chain: self.parse_commit_rollback_chain()?,
+        })
+    }
+
     pub fn parse_transaction_modes(&mut self) -> Result<Vec<TransactionMode>, ParserError> {
         let mut modes = vec![];
         let mut required = false;
@@ -7689,9 +7939,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_rollback(&mut self) -> Result<Statement, ParserError> {
-        Ok(Statement::Rollback {
-            chain: self.parse_commit_rollback_chain()?,
-        })
+        let chain = self.parse_commit_rollback_chain()?;
+        let savepoint = self.parse_rollback_savepoint()?;
+
+        Ok(Statement::Rollback { chain, savepoint })
     }
 
     pub fn parse_commit_rollback_chain(&mut self) -> Result<bool, ParserError> {
@@ -7702,6 +7953,17 @@ impl<'a> Parser<'a> {
             Ok(chain)
         } else {
             Ok(false)
+        }
+    }
+
+    pub fn parse_rollback_savepoint(&mut self) -> Result<Option<Ident>, ParserError> {
+        if self.parse_keyword(Keyword::TO) {
+            let _ = self.parse_keyword(Keyword::SAVEPOINT);
+            let savepoint = self.parse_identifier()?;
+
+            Ok(Some(savepoint))
+        } else {
+            Ok(None)
         }
     }
 
@@ -8385,7 +8647,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHARACTER(20)",
-                DataType::Character(Some(CharacterLength {
+                DataType::Character(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: None
                 }))
@@ -8394,7 +8656,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHARACTER(20 CHARACTERS)",
-                DataType::Character(Some(CharacterLength {
+                DataType::Character(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: Some(CharLengthUnits::Characters)
                 }))
@@ -8403,7 +8665,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHARACTER(20 OCTETS)",
-                DataType::Character(Some(CharacterLength {
+                DataType::Character(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: Some(CharLengthUnits::Octets)
                 }))
@@ -8414,7 +8676,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHAR(20)",
-                DataType::Char(Some(CharacterLength {
+                DataType::Char(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: None
                 }))
@@ -8423,7 +8685,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHAR(20 CHARACTERS)",
-                DataType::Char(Some(CharacterLength {
+                DataType::Char(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: Some(CharLengthUnits::Characters)
                 }))
@@ -8432,7 +8694,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHAR(20 OCTETS)",
-                DataType::Char(Some(CharacterLength {
+                DataType::Char(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: Some(CharLengthUnits::Octets)
                 }))
@@ -8441,7 +8703,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHARACTER VARYING(20)",
-                DataType::CharacterVarying(Some(CharacterLength {
+                DataType::CharacterVarying(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: None
                 }))
@@ -8450,7 +8712,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHARACTER VARYING(20 CHARACTERS)",
-                DataType::CharacterVarying(Some(CharacterLength {
+                DataType::CharacterVarying(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: Some(CharLengthUnits::Characters)
                 }))
@@ -8459,7 +8721,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHARACTER VARYING(20 OCTETS)",
-                DataType::CharacterVarying(Some(CharacterLength {
+                DataType::CharacterVarying(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: Some(CharLengthUnits::Octets)
                 }))
@@ -8468,7 +8730,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHAR VARYING(20)",
-                DataType::CharVarying(Some(CharacterLength {
+                DataType::CharVarying(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: None
                 }))
@@ -8477,7 +8739,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHAR VARYING(20 CHARACTERS)",
-                DataType::CharVarying(Some(CharacterLength {
+                DataType::CharVarying(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: Some(CharLengthUnits::Characters)
                 }))
@@ -8486,7 +8748,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "CHAR VARYING(20 OCTETS)",
-                DataType::CharVarying(Some(CharacterLength {
+                DataType::CharVarying(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: Some(CharLengthUnits::Octets)
                 }))
@@ -8495,7 +8757,7 @@ mod tests {
             test_parse_data_type!(
                 dialect,
                 "VARCHAR(20)",
-                DataType::Varchar(Some(CharacterLength {
+                DataType::Varchar(Some(CharacterLength::IntegerLength {
                     length: 20,
                     unit: None
                 }))
