@@ -1917,7 +1917,9 @@ pub enum Statement {
     /// USE
     ///
     /// Note: This is a MySQL-specific statement.
-    Use { db_name: Ident },
+    Use {
+        db_name: Ident,
+    },
     /// `START  [ TRANSACTION | WORK ] | START TRANSACTION } ...`
     /// If `begin` is false.
     ///
@@ -1945,7 +1947,9 @@ pub enum Statement {
         if_exists: bool,
     },
     /// `COMMIT [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]`
-    Commit { chain: bool },
+    Commit {
+        chain: bool,
+    },
     /// `ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ] [ TO [ SAVEPOINT ] savepoint_name ]`
     Rollback {
         chain: bool,
@@ -2092,9 +2096,13 @@ pub enum Statement {
         format: Option<AnalyzeFormat>,
     },
     /// SAVEPOINT -- define a new savepoint within the current transaction
-    Savepoint { name: Ident },
+    Savepoint {
+        name: Ident,
+    },
     /// RELEASE \[ SAVEPOINT \] savepoint_name
-    ReleaseSavepoint { name: Ident },
+    ReleaseSavepoint {
+        name: Ident,
+    },
     // MERGE INTO statement, based on Snowflake. See <https://docs.snowflake.com/en/sql-reference/sql/merge.html>
     Merge {
         // optional INTO keyword
