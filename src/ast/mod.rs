@@ -31,18 +31,18 @@ pub use self::data_type::{
 pub use self::dcl::{AlterRoleOperation, ResetConfig, RoleOption, SetConfigValue};
 pub use self::ddl::{
     AlterColumnOperation, AlterIndexOperation, AlterTableOperation, ColumnDef, ColumnOption,
-    ColumnOptionDef, GeneratedAs, IndexType, KeyOrIndexDisplay, Partition, ProcedureParam,
-    ReferentialAction, TableConstraint, UserDefinedTypeCompositeAttributeDef,
+    ColumnOptionDef, GeneratedAs, GeneratedExpressionMode, IndexType, KeyOrIndexDisplay, Partition,
+    ProcedureParam, ReferentialAction, TableConstraint, UserDefinedTypeCompositeAttributeDef,
     UserDefinedTypeRepresentation,
 };
 pub use self::operator::{BinaryOperator, UnaryOperator};
 pub use self::query::{
-    Cte, Distinct, ExceptSelectItem, ExcludeSelectItem, Fetch, GroupByExpr, IdentWithAlias, Join,
-    JoinConstraint, JoinOperator, LateralView, LockClause, LockType, NamedWindowDefinition,
-    NonBlock, Offset, OffsetRows, OrderByExpr, Query, RenameSelectItem, ReplaceSelectElement,
-    ReplaceSelectItem, Select, SelectInto, SelectItem, SetExpr, SetOperator, SetQuantifier, Table,
-    TableAlias, TableFactor, TableVersion, TableWithJoins, Top, Values, WildcardAdditionalOptions,
-    With,
+    Cte, Distinct, ExceptSelectItem, ExcludeSelectItem, Fetch, ForClause, ForJson, ForXml,
+    GroupByExpr, IdentWithAlias, Join, JoinConstraint, JoinOperator, LateralView, LockClause,
+    LockType, NamedWindowDefinition, NonBlock, Offset, OffsetRows, OrderByExpr, Query,
+    RenameSelectItem, ReplaceSelectElement, ReplaceSelectItem, Select, SelectInto, SelectItem,
+    SetExpr, SetOperator, SetQuantifier, Table, TableAlias, TableFactor, TableVersion,
+    TableWithJoins, Top, Values, WildcardAdditionalOptions, With,
 };
 pub use self::value::{
     escape_quoted_string, DateTimeField, DollarQuotedString, TrimWhereField, Value,
@@ -473,6 +473,17 @@ pub enum Expr {
     },
     /// Unary operation e.g. `NOT foo`
     UnaryOp { op: UnaryOperator, expr: Box<Expr> },
+    /// CONVERT a value to a different data type or character encoding `CONVERT(foo USING utf8mb4)`
+    Convert {
+        /// The expression to convert
+        expr: Box<Expr>,
+        /// The target data type
+        data_type: Option<DataType>,
+        /// The target character encoding
+        charset: Option<ObjectName>,
+        /// whether the target comes before the expr (MSSQL syntax)
+        target_before_value: bool,
+    },
     /// CAST an expression to a different data type e.g. `CAST(foo AS VARCHAR(123))`
     Cast {
         expr: Box<Expr>,
@@ -843,6 +854,28 @@ impl fmt::Display for Expr {
                 } else {
                     write!(f, "{op}{expr}")
                 }
+            }
+            Expr::Convert {
+                expr,
+                target_before_value,
+                data_type,
+                charset,
+            } => {
+                write!(f, "CONVERT(")?;
+                if let Some(data_type) = data_type {
+                    if let Some(charset) = charset {
+                        write!(f, "{expr}, {data_type} CHARACTER SET {charset}")
+                    } else if *target_before_value {
+                        write!(f, "{data_type}, {expr}")
+                    } else {
+                        write!(f, "{expr}, {data_type}")
+                    }
+                } else if let Some(charset) = charset {
+                    write!(f, "{expr} USING {charset}")
+                } else {
+                    write!(f, "{expr}") // This should never happen
+                }?;
+                write!(f, ")")
             }
             Expr::Cast {
                 expr,
@@ -1481,7 +1514,7 @@ pub enum Statement {
         /// Overwrite (Hive)
         overwrite: bool,
         /// A SQL query that specifies what to insert
-        source: Box<Query>,
+        source: Option<Box<Query>>,
         /// partitioned insert (Hive)
         partitioned: Option<Vec<Expr>>,
         /// Columns defined after PARTITION
@@ -1846,6 +1879,8 @@ pub enum Statement {
     /// Note: this is a MySQL-specific statement.
     ShowVariables {
         filter: Option<ShowStatementFilter>,
+        global: bool,
+        session: bool,
     },
     /// SHOW CREATE TABLE
     ///
@@ -1915,9 +1950,10 @@ pub enum Statement {
     Commit {
         chain: bool,
     },
-    /// `ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]`
+    /// `ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ] [ TO [ SAVEPOINT ] savepoint_name ]`
     Rollback {
         chain: bool,
+        savepoint: Option<Ident>,
     },
     /// CREATE SCHEMA
     CreateSchema {
@@ -2061,6 +2097,10 @@ pub enum Statement {
     },
     /// SAVEPOINT -- define a new savepoint within the current transaction
     Savepoint {
+        name: Ident,
+    },
+    /// RELEASE \[ SAVEPOINT \] savepoint_name
+    ReleaseSavepoint {
         name: Ident,
     },
     // MERGE INTO statement, based on Snowflake. See <https://docs.snowflake.com/en/sql-reference/sql/merge.html>
@@ -2447,7 +2487,14 @@ impl fmt::Display for Statement {
                 if !after_columns.is_empty() {
                     write!(f, "({}) ", display_comma_separated(after_columns))?;
                 }
-                write!(f, "{source}")?;
+
+                if let Some(source) = source {
+                    write!(f, "{source}")?;
+                }
+
+                if source.is_none() && columns.is_empty() {
+                    write!(f, "DEFAULT VALUES")?;
+                }
 
                 if let Some(on) = on {
                     write!(f, "{on}")?;
@@ -3183,8 +3230,19 @@ impl fmt::Display for Statement {
                 }
                 Ok(())
             }
-            Statement::ShowVariables { filter } => {
-                write!(f, "SHOW VARIABLES")?;
+            Statement::ShowVariables {
+                filter,
+                global,
+                session,
+            } => {
+                write!(f, "SHOW")?;
+                if *global {
+                    write!(f, " GLOBAL")?;
+                }
+                if *session {
+                    write!(f, " SESSION")?;
+                }
+                write!(f, " VARIABLES")?;
                 if filter.is_some() {
                     write!(f, " {}", filter.as_ref().unwrap())?;
                 }
@@ -3285,8 +3343,18 @@ impl fmt::Display for Statement {
             Statement::Commit { chain } => {
                 write!(f, "COMMIT{}", if *chain { " AND CHAIN" } else { "" },)
             }
-            Statement::Rollback { chain } => {
-                write!(f, "ROLLBACK{}", if *chain { " AND CHAIN" } else { "" },)
+            Statement::Rollback { chain, savepoint } => {
+                write!(f, "ROLLBACK")?;
+
+                if *chain {
+                    write!(f, " AND CHAIN")?;
+                }
+
+                if let Some(savepoint) = savepoint {
+                    write!(f, " TO SAVEPOINT {savepoint}")?;
+                }
+
+                Ok(())
             }
             Statement::CreateSchema {
                 schema_name,
@@ -3382,6 +3450,9 @@ impl fmt::Display for Statement {
             Statement::Savepoint { name } => {
                 write!(f, "SAVEPOINT ")?;
                 write!(f, "{name}")
+            }
+            Statement::ReleaseSavepoint { name } => {
+                write!(f, "RELEASE SAVEPOINT {name}")
             }
             Statement::Merge {
                 into,
@@ -3843,7 +3914,7 @@ impl fmt::Display for OnInsert {
                 " ON DUPLICATE KEY UPDATE {}",
                 display_comma_separated(expr)
             ),
-            Self::OnConflict(o) => write!(f, " {o}"),
+            Self::OnConflict(o) => write!(f, "{o}"),
         }
     }
 }

@@ -350,10 +350,12 @@ fn parse_create_table_with_defaults() {
                     },
                     ColumnDef {
                         name: "first_name".into(),
-                        data_type: DataType::CharacterVarying(Some(CharacterLength {
-                            length: 45,
-                            unit: None
-                        })),
+                        data_type: DataType::CharacterVarying(Some(
+                            CharacterLength::IntegerLength {
+                                length: 45,
+                                unit: None
+                            }
+                        )),
                         collation: None,
                         options: vec![ColumnOptionDef {
                             name: None,
@@ -362,10 +364,12 @@ fn parse_create_table_with_defaults() {
                     },
                     ColumnDef {
                         name: "last_name".into(),
-                        data_type: DataType::CharacterVarying(Some(CharacterLength {
-                            length: 45,
-                            unit: None
-                        })),
+                        data_type: DataType::CharacterVarying(Some(
+                            CharacterLength::IntegerLength {
+                                length: 45,
+                                unit: None
+                            }
+                        )),
                         collation: Some(ObjectName(vec![Ident::with_quote('"', "es_ES")])),
                         options: vec![ColumnOptionDef {
                             name: None,
@@ -374,10 +378,12 @@ fn parse_create_table_with_defaults() {
                     },
                     ColumnDef {
                         name: "email".into(),
-                        data_type: DataType::CharacterVarying(Some(CharacterLength {
-                            length: 50,
-                            unit: None
-                        })),
+                        data_type: DataType::CharacterVarying(Some(
+                            CharacterLength::IntegerLength {
+                                length: 50,
+                                unit: None
+                            }
+                        )),
                         collation: None,
                         options: vec![],
                     },
@@ -1005,6 +1011,7 @@ fn parse_copy_to() {
                 offset: None,
                 fetch: None,
                 locks: vec![],
+                for_clause: None,
             })),
             to: true,
             target: CopyTarget::File {
@@ -1373,7 +1380,7 @@ fn parse_prepare() {
         Statement::Insert {
             table_name,
             columns,
-            source,
+            source: Some(source),
             ..
         } => {
             assert_eq!(table_name.to_string(), "customers");
@@ -1422,7 +1429,7 @@ fn parse_prepare() {
 fn parse_pg_on_conflict() {
     let stmt = pg_and_generic().verified_stmt(
         "INSERT INTO distributors (did, dname) \
-        VALUES (5, 'Gizmo Transglobal'), (6, 'Associated Computing, Inc')  \
+        VALUES (5, 'Gizmo Transglobal'), (6, 'Associated Computing, Inc') \
         ON CONFLICT(did) \
         DO UPDATE SET dname = EXCLUDED.dname",
     );
@@ -1452,7 +1459,7 @@ fn parse_pg_on_conflict() {
 
     let stmt = pg_and_generic().verified_stmt(
         "INSERT INTO distributors (did, dname, area) \
-        VALUES (5, 'Gizmo Transglobal', 'Mars'), (6, 'Associated Computing, Inc', 'Venus')  \
+        VALUES (5, 'Gizmo Transglobal', 'Mars'), (6, 'Associated Computing, Inc', 'Venus') \
         ON CONFLICT(did, area) \
         DO UPDATE SET dname = EXCLUDED.dname, area = EXCLUDED.area",
     );
@@ -1491,7 +1498,7 @@ fn parse_pg_on_conflict() {
 
     let stmt = pg_and_generic().verified_stmt(
         "INSERT INTO distributors (did, dname) \
-    VALUES (5, 'Gizmo Transglobal'), (6, 'Associated Computing, Inc')  \
+    VALUES (5, 'Gizmo Transglobal'), (6, 'Associated Computing, Inc') \
     ON CONFLICT DO NOTHING",
     );
     match stmt {
@@ -1510,7 +1517,7 @@ fn parse_pg_on_conflict() {
 
     let stmt = pg_and_generic().verified_stmt(
         "INSERT INTO distributors (did, dname, dsize) \
-        VALUES (5, 'Gizmo Transglobal', 1000), (6, 'Associated Computing, Inc', 1010)  \
+        VALUES (5, 'Gizmo Transglobal', 1000), (6, 'Associated Computing, Inc', 1010) \
         ON CONFLICT(did) \
         DO UPDATE SET dname = $1 WHERE dsize > $2",
     );
@@ -1547,7 +1554,7 @@ fn parse_pg_on_conflict() {
 
     let stmt = pg_and_generic().verified_stmt(
         "INSERT INTO distributors (did, dname, dsize) \
-        VALUES (5, 'Gizmo Transglobal', 1000), (6, 'Associated Computing, Inc', 1010)  \
+        VALUES (5, 'Gizmo Transglobal', 1000), (6, 'Associated Computing, Inc', 1010) \
         ON CONFLICT ON CONSTRAINT distributors_did_pkey \
         DO UPDATE SET dname = $1 WHERE dsize > $2",
     );
@@ -2055,6 +2062,7 @@ fn parse_array_subquery_expr() {
             offset: None,
             fetch: None,
             locks: vec![],
+            for_clause: None,
         })),
         expr_from_projection(only(&select.projection)),
     );
@@ -2084,16 +2092,6 @@ fn test_transaction_statement() {
             session: true
         }
     );
-}
-
-#[test]
-fn test_savepoint() {
-    match pg().verified_stmt("SAVEPOINT test1") {
-        Statement::Savepoint { name } => {
-            assert_eq!(Ident::new("test1"), name);
-        }
-        _ => unreachable!(),
-    }
 }
 
 #[test]
@@ -3945,7 +3943,7 @@ fn parse_mirror_table_mapping_v2_missing() {
 #[test]
 fn parse_abort() {
     match pg().verified_stmt("ROLLBACK") {
-        Statement::Rollback { chain: false } => (),
+        Statement::Rollback { chain: false, .. } => (),
         _ => unreachable!(),
     }
     pg().one_statement_parses_to("ABORT", "ROLLBACK");
