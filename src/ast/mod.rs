@@ -1874,7 +1874,9 @@ pub enum Statement {
     ///
     /// Note: this is a PostgreSQL-specific statement,
     /// but may also compatible with other SQL.
-    Discard { object_type: DiscardObject },
+    Discard {
+        object_type: DiscardObject,
+    },
     /// ```sql
     /// SET [ SESSION | LOCAL ] ROLE role_name
     /// ```
@@ -1910,7 +1912,10 @@ pub enum Statement {
     ///
     /// Note: this is a PostgreSQL-specific statements
     /// `SET TIME ZONE <value>` is an alias for `SET timezone TO <value>` in PostgreSQL
-    SetTimeZone { local: bool, value: Expr },
+    SetTimeZone {
+        local: bool,
+        value: Expr,
+    },
     /// ```sql
     /// SET NAMES 'charset_name' [COLLATE 'collation_name']
     /// ```
@@ -1937,7 +1942,9 @@ pub enum Statement {
     /// ```
     ///
     /// Note: this is a PostgreSQL-specific statement.
-    ShowVariable { variable: Vec<Ident> },
+    ShowVariable {
+        variable: Vec<Ident>,
+    },
     /// ```sql
     /// SHOW VARIABLES
     /// ```
@@ -1984,13 +1991,17 @@ pub enum Statement {
     /// ```
     ///
     /// Note: this is a MySQL-specific statement.
-    ShowCollation { filter: Option<ShowStatementFilter> },
+    ShowCollation {
+        filter: Option<ShowStatementFilter>,
+    },
     /// ```sql
     /// USE
     /// ```
     ///
     /// Note: This is a MySQL-specific statement.
-    Use { db_name: Ident },
+    Use {
+        db_name: Ident,
+    },
     /// ```sql
     /// START  [ TRANSACTION | WORK ] | START TRANSACTION } ...
     /// ```
@@ -2030,7 +2041,9 @@ pub enum Statement {
     /// ```sql
     /// COMMIT [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ]
     /// ```
-    Commit { chain: bool },
+    Commit {
+        chain: bool,
+    },
     /// ```sql
     /// ROLLBACK [ TRANSACTION | WORK ] [ AND [ NO ] CHAIN ] [ TO [ SAVEPOINT ] savepoint_name ]
     /// ```
@@ -2140,13 +2153,19 @@ pub enum Statement {
     /// ```
     ///
     /// Note: this is a PostgreSQL-specific statement.
-    Deallocate { name: Ident, prepare: bool },
+    Deallocate {
+        name: Ident,
+        prepare: bool,
+    },
     /// ```sql
     /// EXECUTE name [ ( parameter [, ...] ) ]
     /// ```
     ///
     /// Note: this is a PostgreSQL-specific statement.
-    Execute { name: Ident, parameters: Vec<Expr> },
+    Execute {
+        name: Ident,
+        parameters: Vec<Expr>,
+    },
     /// ```sql
     /// PREPARE name [ ( data_type [, ...] ) ] AS statement
     /// ```
@@ -2198,11 +2217,15 @@ pub enum Statement {
     /// SAVEPOINT
     /// ```
     /// Define a new savepoint within the current transaction
-    Savepoint { name: Ident },
+    Savepoint {
+        name: Ident,
+    },
     /// ```sql
     /// RELEASE [ SAVEPOINT ] savepoint_name
     /// ```
-    ReleaseSavepoint { name: Ident },
+    ReleaseSavepoint {
+        name: Ident,
+    },
     /// ```sql
     /// MERGE INTO <statement>
     /// ```
@@ -2279,7 +2302,9 @@ pub enum Statement {
     /// LOCK TABLES <table_name> [READ [LOCAL] | [LOW_PRIORITY] WRITE]
     /// ```
     /// Note: this is a MySQL-specific statement. See <https://dev.mysql.com/doc/refman/8.0/en/lock-tables.html>
-    LockTables { tables: Vec<LockTable> },
+    LockTables {
+        tables: Vec<LockTable>,
+    },
     /// ```sql
     /// UNLOCK TABLES
     /// ```
