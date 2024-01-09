@@ -195,7 +195,7 @@ impl fmt::Display for ParserError {
 impl std::error::Error for ParserError {}
 
 // By default, allow expressions up to this deep before erroring
-const DEFAULT_REMAINING_DEPTH: usize = 50;
+const DEFAULT_REMAINING_DEPTH: usize = 48;
 
 /// Composite types declarations using angle brackets syntax can be arbitrary
 /// nested such that the following declaration is possible:
