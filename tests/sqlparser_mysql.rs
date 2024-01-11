@@ -517,6 +517,10 @@ fn parse_create_table_gencol() {
 
     let sql_stored = "CREATE TABLE t1 (a INT, b INT GENERATED ALWAYS AS (a * 2) STORED)";
     mysql_and_generic().verified_stmt(sql_stored);
+
+    mysql_and_generic().verified_stmt("CREATE TABLE t1 (a INT, b INT AS (a * 2))");
+    mysql_and_generic().verified_stmt("CREATE TABLE t1 (a INT, b INT AS (a * 2) VIRTUAL)");
+    mysql_and_generic().verified_stmt("CREATE TABLE t1 (a INT, b INT AS (a * 2) STORED)");
 }
 
 #[test]
@@ -1869,4 +1873,94 @@ fn parse_convert_using() {
     mysql().verified_only_select("SELECT CONVERT(123.456, DECIMAL(5,2))");
     // with a type + a charset
     mysql().verified_only_select("SELECT CONVERT('test', CHAR CHARACTER SET utf8mb4)");
+}
+
+#[test]
+fn parse_create_table_with_column_collate() {
+    let sql = "CREATE TABLE tb (id TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci)";
+    let canonical = "CREATE TABLE tb (id TEXT COLLATE utf8mb4_0900_ai_ci CHARACTER SET utf8mb4)";
+    match mysql().one_statement_parses_to(sql, canonical) {
+        Statement::CreateTable { name, columns, .. } => {
+            assert_eq!(name.to_string(), "tb");
+            assert_eq!(
+                vec![ColumnDef {
+                    name: Ident::new("id"),
+                    data_type: DataType::Text,
+                    collation: Some(ObjectName(vec![Ident::new("utf8mb4_0900_ai_ci")])),
+                    options: vec![ColumnOptionDef {
+                        name: None,
+                        option: ColumnOption::CharacterSet(ObjectName(vec![Ident::new("utf8mb4")]))
+                    }],
+                },],
+                columns
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_lock_tables() {
+    mysql().one_statement_parses_to(
+        "LOCK TABLES trans t READ, customer WRITE",
+        "LOCK TABLES trans AS t READ, customer WRITE",
+    );
+    mysql().verified_stmt("LOCK TABLES trans AS t READ, customer WRITE");
+    mysql().verified_stmt("LOCK TABLES trans AS t READ LOCAL, customer WRITE");
+    mysql().verified_stmt("LOCK TABLES trans AS t READ, customer LOW_PRIORITY WRITE");
+    mysql().verified_stmt("UNLOCK TABLES");
+}
+
+#[test]
+fn parse_json_table() {
+    mysql().verified_only_select("SELECT * FROM JSON_TABLE('[[1, 2], [3, 4]]', '$[*]' COLUMNS(a INT PATH '$[0]', b INT PATH '$[1]')) AS t");
+    mysql().verified_only_select(
+        r#"SELECT * FROM JSON_TABLE('["x", "y"]', '$[*]' COLUMNS(a VARCHAR(20) PATH '$')) AS t"#,
+    );
+    // with a bound parameter
+    mysql().verified_only_select(
+        r#"SELECT * FROM JSON_TABLE(?, '$[*]' COLUMNS(a VARCHAR(20) PATH '$')) AS t"#,
+    );
+    // quote escaping
+    mysql().verified_only_select(r#"SELECT * FROM JSON_TABLE('{"''": [1,2,3]}', '$."''"[*]' COLUMNS(a VARCHAR(20) PATH '$')) AS t"#);
+    // double quotes
+    mysql().verified_only_select(
+        r#"SELECT * FROM JSON_TABLE("[]", "$[*]" COLUMNS(a VARCHAR(20) PATH "$")) AS t"#,
+    );
+    // exists
+    mysql().verified_only_select(r#"SELECT * FROM JSON_TABLE('[{}, {"x":1}]', '$[*]' COLUMNS(x INT EXISTS PATH '$.x')) AS t"#);
+    // error handling
+    mysql().verified_only_select(
+        r#"SELECT * FROM JSON_TABLE('[1,2]', '$[*]' COLUMNS(x INT PATH '$' ERROR ON ERROR)) AS t"#,
+    );
+    mysql().verified_only_select(
+        r#"SELECT * FROM JSON_TABLE('[1,2]', '$[*]' COLUMNS(x INT PATH '$' ERROR ON EMPTY)) AS t"#,
+    );
+    mysql().verified_only_select(r#"SELECT * FROM JSON_TABLE('[1,2]', '$[*]' COLUMNS(x INT PATH '$' ERROR ON EMPTY DEFAULT '0' ON ERROR)) AS t"#);
+    assert_eq!(
+        mysql()
+            .verified_only_select(
+                r#"SELECT * FROM JSON_TABLE('[1,2]', '$[*]' COLUMNS(x INT PATH '$' DEFAULT '0' ON EMPTY NULL ON ERROR)) AS t"#
+            )
+            .from[0]
+            .relation,
+        TableFactor::JsonTable {
+            json_expr: Expr::Value(Value::SingleQuotedString("[1,2]".to_string())),
+            json_path: Value::SingleQuotedString("$[*]".to_string()),
+            columns: vec![
+                JsonTableColumn {
+                    name: Ident::new("x"),
+                    r#type: DataType::Int(None),
+                    path: Value::SingleQuotedString("$".to_string()),
+                    exists: false,
+                    on_empty: Some(JsonTableColumnErrorHandling::Default(Value::SingleQuotedString("0".to_string()))),
+                    on_error: Some(JsonTableColumnErrorHandling::Null),
+                },
+            ],
+            alias: Some(TableAlias {
+                name: Ident::new("t"),
+                columns: vec![],
+            }),
+        }
+    );
 }
