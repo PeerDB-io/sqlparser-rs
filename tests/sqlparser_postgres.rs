@@ -3415,22 +3415,59 @@ fn parse_create_single_mirror_no_options() {
 }
 
 #[test]
-fn parse_create_eventhub_group_peer() {
-    match pg()
-        .verified_stmt("CREATE PEER eventhub_group_1 FROM EVENTHUBGROUP WITH (customer_1 = true)")
-    {
+fn parse_create_eventhubs_peer() {
+    match pg().verified_stmt(
+        r#"CREATE PEER eventhubs_1 FROM EVENTHUBS WITH (eventhubs = '[
+                    {
+                        "subscription_id":"mysubscriptionid1",
+                        "resource_group":"my-resource-1",
+                        "namespace":"test-namespace-1",
+                        "location":"eastus",
+                        "partition_count":5,
+                        "message_retention_in_days":2
+                    },
+                    {
+                        "subscription_id":"mysubscriptionid2",
+                        "resource_group":"my-resource-2",
+                        "namespace":"test-namespace-2",
+                        "location":"eastus",
+                        "partition_count":5,
+                        "message_retention_in_days":2
+                    }
+                    ]')"#,
+    ) {
         Statement::CreatePeer {
             if_not_exists: _,
             peer_name: _,
             peer_type,
             with_options,
         } => {
-            assert_eq!(peer_type, PeerType::EventHubGroup);
+            assert_eq!(peer_type, PeerType::Eventhubs);
             assert_eq!(
                 with_options,
                 vec![SqlOption {
-                    name: Ident::new("customer_1"),
-                    value: sqlparser::ast::Value::Boolean(true)
+                    name: Ident::new("eventhubs"),
+                    value: Value::SingleQuotedString(
+                        r#"[
+                    {
+                        "subscription_id":"mysubscriptionid1",
+                        "resource_group":"my-resource-1",
+                        "namespace":"test-namespace-1",
+                        "location":"eastus",
+                        "partition_count":5,
+                        "message_retention_in_days":2
+                    },
+                    {
+                        "subscription_id":"mysubscriptionid2",
+                        "resource_group":"my-resource-2",
+                        "namespace":"test-namespace-2",
+                        "location":"eastus",
+                        "partition_count":5,
+                        "message_retention_in_days":2
+                    }
+                    ]"#
+                        .into(),
+                    )
                 }]
             );
         }
