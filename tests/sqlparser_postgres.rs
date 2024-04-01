@@ -3416,9 +3416,8 @@ fn parse_create_single_mirror_no_options() {
 
 #[test]
 fn parse_create_eventhubs_peer() {
-    match pg()
-        .verified_stmt(
-            r#"CREATE PEER eventhubs_1 FROM EVENTHUBS WITH (eventhubs = '[
+    match pg().verified_stmt(
+        r#"CREATE PEER eventhubs_1 FROM EVENTHUBS WITH (eventhubs = '[
                     {
                         "subscription_id":"mysubscriptionid1",
                         "resource_group":"my-resource-1",
@@ -3435,9 +3434,8 @@ fn parse_create_eventhubs_peer() {
                         "partition_count":5,
                         "message_retention_in_days":2
                     }
-                    ]')"#
-        )
-    {
+                    ]')"#,
+    ) {
         Statement::CreatePeer {
             if_not_exists: _,
             peer_name: _,
