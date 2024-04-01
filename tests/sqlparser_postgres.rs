@@ -3417,7 +3417,26 @@ fn parse_create_single_mirror_no_options() {
 #[test]
 fn parse_create_eventhubs_peer() {
     match pg()
-        .verified_stmt("CREATE PEER myevent FROM EVENTHUBS WITH (eventhubs = '[{\"subscription_id\":\"mysubscriptionid1\",\"resource_group\":\"my-resource-1\",\"namespace\":\"test-namespace-1\",\"location\":\"eastus\",\"partition_count\":5,\"message_retention_in_days\":2},{\"subscription_id\":\"mysubscriptionid2\",\"resource_group\":\"my-resource-2\",\"namespace\":\"test-namespace-2\",\"location\":\"eastus\",\"partition_count\":5,\"message_retention_in_days\":2}]')")
+        .verified_stmt(
+            r#"CREATE PEER eventhubs_1 FROM EVENTHUBS WITH (eventhubs = '[
+                    {
+                        "subscription_id":"mysubscriptionid1",
+                        "resource_group":"my-resource-1",
+                        "namespace":"test-namespace-1",
+                        "location":"eastus",
+                        "partition_count":5,
+                        "message_retention_in_days":2
+                    },
+                    {
+                        "subscription_id":"mysubscriptionid2",
+                        "resource_group":"my-resource-2",
+                        "namespace":"test-namespace-2",
+                        "location":"eastus",
+                        "partition_count":5,
+                        "message_retention_in_days":2
+                    }
+                    ]')"#
+        )
     {
         Statement::CreatePeer {
             if_not_exists: _,
@@ -3431,7 +3450,25 @@ fn parse_create_eventhubs_peer() {
                 vec![SqlOption {
                     name: Ident::new("eventhubs"),
                     value: Value::SingleQuotedString(
-                        "[{\"subscription_id\":\"mysubscriptionid1\",\"resource_group\":\"my-resource-1\",\"namespace\":\"test-namespace-1\",\"location\":\"eastus\",\"partition_count\":5,\"message_retention_in_days\":2},{\"subscription_id\":\"mysubscriptionid2\",\"resource_group\":\"my-resource-2\",\"namespace\":\"test-namespace-2\",\"location\":\"eastus\",\"partition_count\":5,\"message_retention_in_days\":2}]".into()
+                        r#"[
+                    {
+                        "subscription_id":"mysubscriptionid1",
+                        "resource_group":"my-resource-1",
+                        "namespace":"test-namespace-1",
+                        "location":"eastus",
+                        "partition_count":5,
+                        "message_retention_in_days":2
+                    },
+                    {
+                        "subscription_id":"mysubscriptionid2",
+                        "resource_group":"my-resource-2",
+                        "namespace":"test-namespace-2",
+                        "location":"eastus",
+                        "partition_count":5,
+                        "message_retention_in_days":2
+                    }
+                    ]"#
+                        .into(),
                     )
                 }]
             );
