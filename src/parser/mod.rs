@@ -8396,8 +8396,7 @@ impl<'a> Parser<'a> {
             Keyword::KAFKA,
             Keyword::S3,
             Keyword::SQLSERVER,
-            Keyword::EVENTHUB,
-            Keyword::EVENTHUBGROUP,
+            Keyword::EVENTHUBS,
         ]) {
             Some(Keyword::BIGQUERY) => Ok(PeerType::Bigquery),
             Some(Keyword::MONGO) => Ok(PeerType::Mongo),
@@ -8405,9 +8404,8 @@ impl<'a> Parser<'a> {
             Some(Keyword::POSTGRES) => Ok(PeerType::Postgres),
             Some(Keyword::KAFKA) => Ok(PeerType::Kafka),
             Some(Keyword::S3) => Ok(PeerType::S3),
-            Some(Keyword::EVENTHUB) => Ok(PeerType::EventHub),
             Some(Keyword::SQLSERVER) => Ok(PeerType::SQLServer),
-            Some(Keyword::EVENTHUBGROUP) => Ok(PeerType::EventHubGroup),
+            Some(Keyword::EVENTHUBS) => Ok(PeerType::Eventhubs),
             other => {
                 let supported_peer_types = [
                     "BIGQUERY",
@@ -8417,8 +8415,7 @@ impl<'a> Parser<'a> {
                     "KAFKA",
                     "S3",
                     "SQLSERVER",
-                    "EVENTHUB",
-                    "EVENTHUBGROUP",
+                    "EVENTHUBS",
                 ];
                 let err = format!(
                     "expected peertype as one of {}, got {:#?}",

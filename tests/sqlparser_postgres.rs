@@ -3415,9 +3415,9 @@ fn parse_create_single_mirror_no_options() {
 }
 
 #[test]
-fn parse_create_eventhub_group_peer() {
+fn parse_create_eventhubs_peer() {
     match pg()
-        .verified_stmt("CREATE PEER eventhub_group_1 FROM EVENTHUBGROUP WITH (customer_1 = true)")
+        .verified_stmt("CREATE PEER myevent FROM EVENTHUBS WITH (eventhubs = '{\"subscription_id\":\"mysubscriptionid\",\"resource_group\":\"sai-test\",\"namespace\":\"test-namespace\",\"location\":\"eastus\",\"partition_count\":5,\"message_retention_in_days\":2}')")
     {
         Statement::CreatePeer {
             if_not_exists: _,
@@ -3425,12 +3425,15 @@ fn parse_create_eventhub_group_peer() {
             peer_type,
             with_options,
         } => {
-            assert_eq!(peer_type, PeerType::EventHubGroup);
+            assert_eq!(peer_type, PeerType::Eventhubs);
             assert_eq!(
                 with_options,
                 vec![SqlOption {
-                    name: Ident::new("customer_1"),
-                    value: sqlparser::ast::Value::Boolean(true)
+                    name: Ident::new("eventhubs"),
+                    value: sqlparser::ast::Value::SingleQuotedString(
+                        "{\"subscription_id\":\"mysubscriptionid\",\"resource_group\":\"sai-test\",\"namespace\":\"test-namespace\",\"location\":\"eastus\",\"partition_count\":5,\"message_retention_in_days\":2}"
+                            .into()
+                    )
                 }]
             );
         }
