@@ -2376,6 +2376,8 @@ pub enum PeerType {
     SQLServer,
     Kafka,
     Eventhubs,
+    PubSub,
+    Elasticsearch,
 }
 
 impl fmt::Display for PeerType {
@@ -2389,6 +2391,8 @@ impl fmt::Display for PeerType {
             PeerType::SQLServer => write!(f, "SQLSERVER"),
             PeerType::Kafka => write!(f, "KAFKA"),
             PeerType::Eventhubs => write!(f, "EVENTHUBS"),
+            PeerType::PubSub => write!(f, "PUBSUB"),
+            PeerType::Elasticsearch => write!(f, "ELASTICSEARCH"),
         }
     }
 }
