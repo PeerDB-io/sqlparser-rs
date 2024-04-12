@@ -8397,6 +8397,8 @@ impl<'a> Parser<'a> {
             Keyword::S3,
             Keyword::SQLSERVER,
             Keyword::EVENTHUBS,
+            Keyword::PUBSUB,
+            Keyword::ELASTICSEARCH,
         ]) {
             Some(Keyword::BIGQUERY) => Ok(PeerType::Bigquery),
             Some(Keyword::MONGO) => Ok(PeerType::Mongo),
@@ -8419,7 +8421,7 @@ impl<'a> Parser<'a> {
                     "SQLSERVER",
                     "EVENTHUBS",
                     "PUBSUB",
-                    "ELASTICSEARCH"
+                    "ELASTICSEARCH",
                 ];
                 let err = format!(
                     "expected peertype as one of {}, got {:#?}",
