@@ -21,6 +21,10 @@ use crate::tokenizer::Token;
 pub struct PostgreSqlDialect {}
 
 impl Dialect for PostgreSqlDialect {
+    fn identifier_quote_style(&self, _identifier: &str) -> Option<char> {
+        Some('"')
+    }
+
     fn is_identifier_start(&self, ch: char) -> bool {
         // See https://www.postgresql.org/docs/11/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
         // We don't yet support identifiers beginning with "letters with
@@ -57,11 +61,11 @@ pub fn parse_comment(parser: &mut Parser) -> Result<Statement, ParserError> {
 
     let (object_type, object_name) = match token.token {
         Token::Word(w) if w.keyword == Keyword::COLUMN => {
-            let object_name = parser.parse_object_name()?;
+            let object_name = parser.parse_object_name(false)?;
             (CommentObject::Column, object_name)
         }
         Token::Word(w) if w.keyword == Keyword::TABLE => {
-            let object_name = parser.parse_object_name()?;
+            let object_name = parser.parse_object_name(false)?;
             (CommentObject::Table, object_name)
         }
         _ => parser.expected("comment object_type", token)?,

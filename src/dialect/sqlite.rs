@@ -16,6 +16,11 @@ use crate::keywords::Keyword;
 use crate::parser::{Parser, ParserError};
 
 /// A [`Dialect`] for [SQLite](https://www.sqlite.org)
+///
+/// This dialect allows columns in a
+/// [`CREATE TABLE`](https://sqlite.org/lang_createtable.html) statement with no
+/// type specified, as in `CREATE TABLE t1 (a)`. In the AST, these columns will
+/// have the data type [`Unspecified`](crate::ast::DataType::Unspecified).
 #[derive(Debug)]
 pub struct SQLiteDialect {}
 
@@ -25,6 +30,10 @@ impl Dialect for SQLiteDialect {
     // TODO: support depending on the context tread '...' as identifier too.
     fn is_delimited_identifier_start(&self, ch: char) -> bool {
         ch == '`' || ch == '"' || ch == '['
+    }
+
+    fn identifier_quote_style(&self, _identifier: &str) -> Option<char> {
+        Some('`')
     }
 
     fn is_identifier_start(&self, ch: char) -> bool {
