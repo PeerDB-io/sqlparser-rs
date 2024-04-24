@@ -3607,7 +3607,7 @@ fn parse_create_eventhubs_peer() {
                 with_options,
                 vec![SqlOption {
                     name: Ident::new("eventhubs"),
-                    value: Value::SingleQuotedString(
+                    value: Expr::Value(Value::SingleQuotedString(
                         r#"[
                     {
                         "subscription_id":"mysubscriptionid1",
@@ -3627,7 +3627,7 @@ fn parse_create_eventhubs_peer() {
                     }
                     ]"#
                         .into(),
-                    )
+                    ))
                 }]
             );
         }
@@ -3655,21 +3655,21 @@ fn parse_create_s3_peer() {
                 vec![
                     SqlOption {
                         name: Ident::new("url"),
-                        value: sqlparser::ast::Value::SingleQuotedString(String::from(
+                        value: Expr::Value(Value::SingleQuotedString(String::from(
                             "s3://bucket_name/prefix_name"
-                        ))
+                        )))
                     },
                     SqlOption {
                         name: Ident::new("access_key_id"),
-                        value: sqlparser::ast::Value::SingleQuotedString(String::from(
+                        value: Expr::Value(Value::SingleQuotedString(String::from(
                             "access_key_id"
-                        ))
+                        )))
                     },
                     SqlOption {
                         name: Ident::new("secret_access_key"),
-                        value: sqlparser::ast::Value::SingleQuotedString(String::from(
+                        value: Expr::Value(Value::SingleQuotedString(String::from(
                             "secret_access_key"
-                        ))
+                        )))
                     }
                 ]
             );
@@ -3691,7 +3691,7 @@ fn parse_create_single_mirror() {
             assert_eq!(cdc.mapping_options[0].destination, ObjectName(vec![Ident::new("s2"), Ident::new("t2")]));
             assert_eq!(cdc.with_options.len(), 1);
             assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
-            assert_eq!(cdc.with_options[0].value, Value::SingleQuotedString("value1".into()));
+            assert_eq!(cdc.with_options[0].value, Expr::Value(Value::SingleQuotedString("value1".into())));
          },
         _ => unreachable!(),
     }
@@ -3738,12 +3738,12 @@ fn parse_create_multi_mirror() {
             assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
             assert_eq!(
                 cdc.with_options[0].value,
-                Value::SingleQuotedString("value1".into())
+                Expr::Value(Value::SingleQuotedString("value1".into()))
             );
             assert_eq!(cdc.with_options[1].name, Ident::new("key2"));
             assert_eq!(
                 cdc.with_options[1].value,
-                Value::SingleQuotedString("value2".into())
+                Expr::Value(Value::SingleQuotedString("value2".into()))
             );
             assert_eq!(cdc.mapping_type, MappingType::Table);
         }
@@ -3791,12 +3791,12 @@ fn parse_create_multi_mirror_v1() {
             assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
             assert_eq!(
                 cdc.with_options[0].value,
-                Value::SingleQuotedString("value1".into())
+                Expr::Value(Value::SingleQuotedString("value1".into()))
             );
             assert_eq!(cdc.with_options[1].name, Ident::new("key2"));
             assert_eq!(
                 cdc.with_options[1].value,
-                Value::SingleQuotedString("value2".into())
+                Expr::Value(Value::SingleQuotedString("value2".into()))
             );
             assert_eq!(cdc.mapping_type, MappingType::Table);
         }
@@ -3833,12 +3833,12 @@ fn parse_create_mirror_with_schema() {
             assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
             assert_eq!(
                 cdc.with_options[0].value,
-                Value::SingleQuotedString("value1".into())
+                Expr::Value(Value::SingleQuotedString("value1".into()))
             );
             assert_eq!(cdc.with_options[1].name, Ident::new("key2"));
             assert_eq!(
                 cdc.with_options[1].value,
-                Value::SingleQuotedString("value2".into())
+                Expr::Value(Value::SingleQuotedString("value2".into()))
             );
             assert_eq!(cdc.mapping_type, MappingType::Schema);
         }
@@ -3987,7 +3987,7 @@ fn parse_resync_mirror_if_exists() {
             assert_eq!(with_options[0].name, Ident::new("query_string"));
             assert_eq!(
                 with_options[0].value,
-                Value::SingleQuotedString("SELECT 1".into())
+                Expr::Value(Value::SingleQuotedString("SELECT 1".into()))
             );
         }
         _ => unreachable!(),
@@ -4005,9 +4005,9 @@ fn parse_mirror_for_select() {
             assert_eq!(select.query_string, "SELECT 1");
             assert_eq!(select.with_options.len(), 2);
             assert_eq!(select.with_options[0].name, Ident::new("key1"));
-            assert_eq!(select.with_options[0].value, Value::SingleQuotedString("value1".into()));
+            assert_eq!(select.with_options[0].value, Expr::Value(Value::SingleQuotedString("value1".into())));
             assert_eq!(select.with_options[1].name, Ident::new("key2"));
-            assert_eq!(select.with_options[1].value, Value::SingleQuotedString("value2".into()));
+            assert_eq!(select.with_options[1].value, Expr::Value(Value::SingleQuotedString("value2".into())));
         },
         _ => unreachable!(),
     }
@@ -4038,7 +4038,7 @@ fn parse_mirror_table_mapping_v1() {
             assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
             assert_eq!(
                 cdc.with_options[0].value,
-                Value::SingleQuotedString("value1".into())
+                Expr::Value(Value::SingleQuotedString("value1".into()))
             );
             assert_eq!(cdc.mapping_type, MappingType::Table);
             assert_eq!(cdc.mapping_options.len(), 2);
@@ -4091,7 +4091,7 @@ fn parse_mirror_table_mapping_v2() {
             assert_eq!(cdc.with_options[0].name, Ident::new("key1"));
             assert_eq!(
                 cdc.with_options[0].value,
-                Value::SingleQuotedString("value1".into())
+                Expr::Value(Value::SingleQuotedString("value1".into()))
             );
             assert_eq!(cdc.mapping_type, MappingType::Table);
             assert_eq!(cdc.mapping_options.len(), 4);
