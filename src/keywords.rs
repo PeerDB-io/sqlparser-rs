@@ -421,6 +421,7 @@ define_keywords!(
     MSCK,
     MULTISET,
     MUTATION,
+    MYSQL,
     NAME,
     NANOSECOND,
     NANOSECONDS,
