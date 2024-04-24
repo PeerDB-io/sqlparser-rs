@@ -55,7 +55,7 @@ fn pragma_eq_style() {
     }
 }
 #[test]
-fn pragma_funciton_style() {
+fn pragma_function_style() {
     let sql = "PRAGMA cache_size(10)";
     match sqlite_and_generic().verified_stmt(sql) {
         Statement::Pragma {
@@ -65,6 +65,54 @@ fn pragma_funciton_style() {
         } => {
             assert_eq!("cache_size", name.to_string());
             assert_eq!("10", val.to_string());
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn pragma_eq_string_style() {
+    let sql = "PRAGMA table_info = 'sqlite_master'";
+    match sqlite_and_generic().verified_stmt(sql) {
+        Statement::Pragma {
+            name,
+            value: Some(val),
+            is_eq: true,
+        } => {
+            assert_eq!("table_info", name.to_string());
+            assert_eq!("'sqlite_master'", val.to_string());
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn pragma_function_string_style() {
+    let sql = "PRAGMA table_info(\"sqlite_master\")";
+    match sqlite_and_generic().verified_stmt(sql) {
+        Statement::Pragma {
+            name,
+            value: Some(val),
+            is_eq: false,
+        } => {
+            assert_eq!("table_info", name.to_string());
+            assert_eq!("\"sqlite_master\"", val.to_string());
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn pragma_eq_placeholder_style() {
+    let sql = "PRAGMA table_info = ?";
+    match sqlite_and_generic().verified_stmt(sql) {
+        Statement::Pragma {
+            name,
+            value: Some(val),
+            is_eq: true,
+        } => {
+            assert_eq!("table_info", name.to_string());
+            assert_eq!("?", val.to_string());
         }
         _ => unreachable!(),
     }
@@ -117,18 +165,18 @@ fn parse_create_view_temporary_if_not_exists() {
             query,
             or_replace,
             materialized,
-            with_options,
+            options,
             cluster_by,
             with_no_schema_binding: late_binding,
             if_not_exists,
             temporary,
         } => {
             assert_eq!("myschema.myview", name.to_string());
-            assert_eq!(Vec::<Ident>::new(), columns);
+            assert_eq!(Vec::<ViewColumnDef>::new(), columns);
             assert_eq!("SELECT foo FROM bar", query.to_string());
             assert!(!materialized);
             assert!(!or_replace);
-            assert_eq!(with_options, vec![]);
+            assert_eq!(options, CreateTableOptions::None);
             assert_eq!(cluster_by, vec![]);
             assert!(!late_binding);
             assert!(if_not_exists);
@@ -160,7 +208,10 @@ fn parse_create_table_auto_increment() {
                     options: vec![
                         ColumnOptionDef {
                             name: None,
-                            option: ColumnOption::Unique { is_primary: true },
+                            option: ColumnOption::Unique {
+                                is_primary: true,
+                                characteristics: None
+                            },
                         },
                         ColumnOptionDef {
                             name: None,
@@ -219,6 +270,11 @@ fn parse_create_table_gencol() {
     sqlite_and_generic().verified_stmt("CREATE TABLE t1 (a INT, b INT AS (a * 2))");
     sqlite_and_generic().verified_stmt("CREATE TABLE t1 (a INT, b INT AS (a * 2) VIRTUAL)");
     sqlite_and_generic().verified_stmt("CREATE TABLE t1 (a INT, b INT AS (a * 2) STORED)");
+}
+
+#[test]
+fn parse_create_table_untyped() {
+    sqlite().verified_stmt("CREATE TABLE t1 (a, b AS (a * 2), c NOT NULL)");
 }
 
 #[test]
@@ -357,6 +413,18 @@ fn parse_single_quoted_identified() {
     sqlite().verified_only_select("SELECT 't'.*, t.'x' FROM 't'");
     // TODO: add support for select 't'.x
 }
+
+#[test]
+fn parse_substring() {
+    // SQLite supports the SUBSTRING function since v3.34, but does not support the SQL standard
+    // SUBSTRING(expr FROM start FOR length) syntax.
+    // https://www.sqlite.org/lang_corefunc.html#substr
+    sqlite().verified_only_select("SELECT SUBSTRING('SQLITE', 3, 4)");
+    sqlite().verified_only_select("SELECT SUBSTR('SQLITE', 3, 4)");
+    sqlite().verified_only_select("SELECT SUBSTRING('SQLITE', 3)");
+    sqlite().verified_only_select("SELECT SUBSTR('SQLITE', 3)");
+}
+
 #[test]
 fn parse_window_function_with_filter() {
     for func_name in [
@@ -378,6 +446,7 @@ fn parse_window_function_with_filter() {
                 ))],
                 null_treatment: None,
                 over: Some(WindowType::WindowSpec(WindowSpec {
+                    window_name: None,
                     partition_by: vec![],
                     order_by: vec![],
                     window_frame: None,
