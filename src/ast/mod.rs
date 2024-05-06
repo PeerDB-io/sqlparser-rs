@@ -2876,6 +2876,7 @@ pub enum PeerType {
     Eventhubs,
     PubSub,
     Elasticsearch,
+    Clickhouse,
 }
 
 impl fmt::Display for PeerType {
@@ -2892,6 +2893,7 @@ impl fmt::Display for PeerType {
             PeerType::Eventhubs => write!(f, "EVENTHUBS"),
             PeerType::PubSub => write!(f, "PUBSUB"),
             PeerType::Elasticsearch => write!(f, "ELASTICSEARCH"),
+            PeerType::Clickhouse => write!(f, "CLICKHOUSE"),
         }
     }
 }
