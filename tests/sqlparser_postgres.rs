@@ -3693,14 +3693,12 @@ fn parse_create_clickhouse_peer() {
             assert_eq!(peer_type, PeerType::Clickhouse);
             assert_eq!(
                 with_options,
-                vec![
-                    SqlOption {
-                        name: Ident::new("host"),
-                        value: Expr::Value(Value::SingleQuotedString(String::from(
-                            "http://clickhouse-server:8123"
-                        )))
-                    },
-                ]
+                vec![SqlOption {
+                    name: Ident::new("host"),
+                    value: Expr::Value(Value::SingleQuotedString(String::from(
+                        "http://clickhouse-server:8123"
+                    )))
+                },]
             );
         }
         _ => unreachable!(),
