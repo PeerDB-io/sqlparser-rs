@@ -3679,6 +3679,35 @@ fn parse_create_s3_peer() {
 }
 
 #[test]
+fn parse_create_clickhouse_peer() {
+    match pg().verified_stmt(
+        "CREATE PEER clickhouse_1 FROM CLICKHOUSE WITH \
+            (host = 'http://clickhouse-server:8123')",
+    ) {
+        Statement::CreatePeer {
+            if_not_exists: _,
+            peer_name: _,
+            peer_type,
+            with_options,
+        } => {
+            assert_eq!(peer_type, PeerType::Clickhouse);
+            assert_eq!(
+                with_options,
+                vec![
+                    SqlOption {
+                        name: Ident::new("host"),
+                        value: Expr::Value(Value::SingleQuotedString(String::from(
+                            "http://clickhouse-server:8123"
+                        )))
+                    },
+                ]
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
 fn parse_create_single_mirror() {
     match pg().verified_stmt("CREATE MIRROR IF NOT EXISTS test_mirror FROM p1 TO p2 WITH TABLE MAPPING ({from : s1.t1, to : s2.t2}) WITH (key1 = 'value1')") {
          Statement::CreateMirror { if_not_exists,create_mirror: CDC(cdc) } => {

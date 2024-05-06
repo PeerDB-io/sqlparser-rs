@@ -9828,6 +9828,7 @@ impl<'a> Parser<'a> {
             Keyword::EVENTHUBS,
             Keyword::PUBSUB,
             Keyword::ELASTICSEARCH,
+            Keyword::CLICKHOUSE
         ]) {
             Some(Keyword::BIGQUERY) => Ok(PeerType::Bigquery),
             Some(Keyword::MONGO) => Ok(PeerType::Mongo),
@@ -9840,6 +9841,7 @@ impl<'a> Parser<'a> {
             Some(Keyword::EVENTHUBS) => Ok(PeerType::Eventhubs),
             Some(Keyword::PUBSUB) => Ok(PeerType::PubSub),
             Some(Keyword::ELASTICSEARCH) => Ok(PeerType::Elasticsearch),
+            Some(Keyword::CLICKHOUSE) => Ok(PeerType::Clickhouse),
             other => {
                 let supported_peer_types = [
                     "BIGQUERY",
@@ -9853,6 +9855,7 @@ impl<'a> Parser<'a> {
                     "EVENTHUBS",
                     "PUBSUB",
                     "ELASTICSEARCH",
+                    "CLICKHOUSE"
                 ];
                 let err = format!(
                     "expected peertype as one of {}, got {:#?}",

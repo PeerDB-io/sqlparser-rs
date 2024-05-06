@@ -147,6 +147,7 @@ define_keywords!(
     CHARSET,
     CHAR_LENGTH,
     CHECK,
+    CLICKHOUSE,
     CLOB,
     CLONE,
     CLOSE,
