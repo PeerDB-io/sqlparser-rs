@@ -8069,6 +8069,7 @@ impl<'a> Parser<'a> {
                 };
                 Join {
                     relation: self.parse_table_factor()?,
+                    hint: None,
                     join_operator,
                 }
             } else if self.parse_keyword(Keyword::OUTER) {
@@ -8076,6 +8077,7 @@ impl<'a> Parser<'a> {
                 self.expect_keyword(Keyword::APPLY)?;
                 Join {
                     relation: self.parse_table_factor()?,
+                    hint: None,
                     join_operator: JoinOperator::OuterApply,
                 }
             } else {
@@ -8154,10 +8156,35 @@ impl<'a> Parser<'a> {
                     }
                     _ => break,
                 };
+
+                let hint = if self.consume_token(&Token::LBracket) {
+                    let hint = Some(
+                        self.expect_one_of_keywords(&[
+                            Keyword::BROADCAST,
+                            Keyword::BUCKET,
+                            Keyword::COLOCATE,
+                            Keyword::SHUFFLE,
+                            Keyword::UNREORDER,
+                        ])
+                        .map(|kw| match kw {
+                            Keyword::BROADCAST => JoinHint::Broadcast,
+                            Keyword::BUCKET => JoinHint::Bucket,
+                            Keyword::COLOCATE => JoinHint::Colocate,
+                            Keyword::SHUFFLE => JoinHint::Shuffle,
+                            Keyword::UNREORDER => JoinHint::Unreorder,
+                            _ => unreachable!(),
+                        })?,
+                    );
+                    self.expect_token(&Token::RBracket)?;
+                    hint
+                } else {
+                    None
+                };
                 let relation = self.parse_table_factor()?;
                 let join_constraint = self.parse_join_constraint(natural)?;
                 Join {
                     relation,
+                    hint,
                     join_operator: join_operator_type(join_constraint),
                 }
             };

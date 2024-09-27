@@ -1023,6 +1023,7 @@ impl Display for TableVersion {
 #[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
 pub struct Join {
     pub relation: TableFactor,
+    pub hint: Option<JoinHint>,
     pub join_operator: JoinOperator,
 }
 
@@ -1049,66 +1050,85 @@ impl fmt::Display for Join {
             }
             Suffix(constraint)
         }
+        let hint = if let Some(hint) = &self.hint {
+            match hint {
+                JoinHint::Broadcast => "[BROADCAST] ",
+                JoinHint::Bucket => "[BUCKET] ",
+                JoinHint::Colocate => "[COLOCATE] ",
+                JoinHint::Shuffle => "[SHUFFLE] ",
+                JoinHint::Unreorder => "[UNREORDER] ",
+            }
+        } else {
+            ""
+        };
         match &self.join_operator {
             JoinOperator::Inner(constraint) => write!(
                 f,
-                " {}JOIN {}{}",
+                " {}JOIN {}{}{}",
                 prefix(constraint),
+                hint,
                 self.relation,
                 suffix(constraint)
             ),
             JoinOperator::LeftOuter(constraint) => write!(
                 f,
-                " {}LEFT JOIN {}{}",
+                " {}LEFT JOIN {}{}{}",
                 prefix(constraint),
+                hint,
                 self.relation,
                 suffix(constraint)
             ),
             JoinOperator::RightOuter(constraint) => write!(
                 f,
-                " {}RIGHT JOIN {}{}",
+                " {}RIGHT JOIN {}{}{}",
                 prefix(constraint),
+                hint,
                 self.relation,
                 suffix(constraint)
             ),
             JoinOperator::FullOuter(constraint) => write!(
                 f,
-                " {}FULL JOIN {}{}",
+                " {}FULL JOIN {}{}{}",
                 prefix(constraint),
+                hint,
                 self.relation,
                 suffix(constraint)
             ),
-            JoinOperator::CrossJoin => write!(f, " CROSS JOIN {}", self.relation),
+            JoinOperator::CrossJoin => write!(f, " CROSS JOIN {}{}", hint, self.relation),
             JoinOperator::LeftSemi(constraint) => write!(
                 f,
-                " {}LEFT SEMI JOIN {}{}",
+                " {}LEFT SEMI JOIN {}{}{}",
                 prefix(constraint),
+                hint,
                 self.relation,
                 suffix(constraint)
             ),
             JoinOperator::RightSemi(constraint) => write!(
                 f,
-                " {}RIGHT SEMI JOIN {}{}",
+                " {}RIGHT SEMI JOIN {}{}{}",
                 prefix(constraint),
+                hint,
                 self.relation,
                 suffix(constraint)
             ),
             JoinOperator::LeftAnti(constraint) => write!(
                 f,
-                " {}LEFT ANTI JOIN {}{}",
+                " {}LEFT ANTI JOIN {}{}{}",
                 prefix(constraint),
+                hint,
                 self.relation,
                 suffix(constraint)
             ),
             JoinOperator::RightAnti(constraint) => write!(
                 f,
-                " {}RIGHT ANTI JOIN {}{}",
+                " {}RIGHT ANTI JOIN {}{}{}",
                 prefix(constraint),
+                hint,
                 self.relation,
                 suffix(constraint)
             ),
-            JoinOperator::CrossApply => write!(f, " CROSS APPLY {}", self.relation),
-            JoinOperator::OuterApply => write!(f, " OUTER APPLY {}", self.relation),
+            JoinOperator::CrossApply => write!(f, " CROSS APPLY {}{}", hint, self.relation),
+            JoinOperator::OuterApply => write!(f, " OUTER APPLY {}{}", hint, self.relation),
         }
     }
 }
@@ -1134,6 +1154,17 @@ pub enum JoinOperator {
     CrossApply,
     /// OUTER APPLY (non-standard)
     OuterApply,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "visitor", derive(Visit, VisitMut))]
+pub enum JoinHint {
+    Broadcast,
+    Bucket,
+    Colocate,
+    Shuffle,
+    Unreorder,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]

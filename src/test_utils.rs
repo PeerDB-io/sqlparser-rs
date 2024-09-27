@@ -304,6 +304,7 @@ pub fn table(name: impl Into<String>) -> TableFactor {
 pub fn join(relation: TableFactor) -> Join {
     Join {
         relation,
+        hint: None,
         join_operator: JoinOperator::Inner(JoinConstraint::Natural),
     }
 }
