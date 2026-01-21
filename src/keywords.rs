@@ -153,6 +153,7 @@ define_keywords!(
     CLOSE,
     CLUSTER,
     COALESCE,
+    COCKROACHDB,
     COLLATE,
     COLLATION,
     COLLECT,
